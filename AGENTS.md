@@ -48,8 +48,9 @@ Si una persona del equipo te pide ayuda con un ticket, explicá lo que hacés en
 | Capa | Tecnología |
 |---|---|
 | Lenguaje | TypeScript (strict) |
-| Web + API | Next.js (App Router), en Vercel |
-| Estilos | Tailwind + shadcn/ui |
+| Web + API | Next.js 16 (App Router), en Vercel. Node 22.12 o más (`.nvmrc`) |
+| Estilos | Tailwind 4 + shadcn/ui |
+| Tests | Vitest (`npm test`) |
 | Blockchain | viem; wagmi en el navegador (MiniPay, Valora, MetaMask) |
 | Tag | `@celo/attribution-tags` |
 | Identidad | ERC-8004 (direcciones por red en *Referencias técnicas*) |
@@ -158,11 +159,35 @@ Mini standup por WhatsApp a la mañana (opcional): qué hice, qué hago hoy, en 
 - Antes de codear algo grande, contá el plan en pocas líneas y qué tecnologías vas a usar.
 - No toques archivos de otro ticket sin avisar.
 - Si tu cambio modifica una decisión, una dirección de contrato, una variable de entorno o el flujo, **actualizá este archivo** (sección "Estado y decisiones") y `docs/PLAN.md` en el mismo PR. Estos archivos tienen que reflejar siempre cómo está el proyecto hoy.
+- Escribí la **descripción del PR en formato APB**, con la plantilla: qué cambia en palabras simples, cómo probarlo paso a paso y las palabras nuevas explicadas. Tiene que entenderla alguien del equipo que no vio el código.
+- Antes de abrir el PR, corré `npm run lint`, `npm test` y `npm run build`, y contá en el PR si algo falló.
+- El bloque `nextjs-agent-rules` del final de este archivo lo escribe `next dev` solo. No lo borres: si lo sacás, vuelve a aparecer.
+
+### Primera vez: la frase para arrancar
+
+Cuando abras el repo con tu agente (Claude Code, Cursor, Codex, Orca, el que sea), pegale esto cambiando tu nombre:
+
+> Soy **Leila**. Leé `AGENTS.md`, `docs/WORKFLOW.md` y `docs/PLAN.md`. Después buscá cuál es mi próximo ticket siguiendo "Cómo elegir el próximo ticket" de `AGENTS.md` y decime cuál es y por qué. Leé ese issue entero, explicame el plan en palabras simples y qué tecnologías vas a usar, y esperá mi OK antes de tocar código.
+
+Si ya sabés qué ticket querés, cambiá la segunda oración por "Mi ticket es el issue #XX".
+
+### Cómo elegir el próximo ticket
+
+El agente lo calcula así (con `gh`, la línea de comandos de GitHub; si no la tiene, le pide a la persona que pegue la lista de sus issues):
+
+1. **Los issues de la persona:** abiertos y con su etiqueta (`flor`, `leila` o `clau`). Los de `todas` también cuentan. `gh issue list --state open --label leila`.
+2. **Que se pueda arrancar:** en la sección "Depende de" de cada issue (`gh issue view 14`), todos los issues nombrados tienen que estar **cerrados**. Algunos dicen `PAC-05` en vez de `#5`: es el mismo número.
+3. **Que nadie lo tenga:** que no haya una rama `pac-XX-…` ni un PR abierto para ese issue (`git fetch` y `git branch -r`, `gh pr list`).
+4. **El orden:** entre los que quedan, primero el sprint más bajo (`sprint-1` antes que `sprint-2`) y después el número de issue más bajo.
+5. **Si no queda ninguno:** decí qué ticket la traba y de quién es, así le avisa. Se puede adelantar una parte que no dependa de eso, avisando en el issue.
 
 ## Estado y decisiones
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
+- 2026-10-26 · Proyecto base (PAC-01): Next.js 16, TypeScript strict con target ES2020 (para usar `bigint`), Tailwind 4, ESLint y Vitest. Pide Node 22.12 o más, porque Vitest 5 lo necesita.
+- 2026-10-26 · Frase de arranque para los agentes y regla para elegir el próximo ticket. Las descripciones de PR van en formato APB (plantilla nueva).
+- 2026-10-26 · No se protege `main`: queda como acuerdo del equipo, no como regla de GitHub.
 - 2026-10-26 · Wallet del agente confirmada por Mavi: `0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`. Es la del submit de Loops, se usa en testnet y en mainnet, y no se crea otra el 4 nov.
 - 2026-10-26 · Tag de atribución `celo_dc3ce5f39b37` (personal de Mavi) en `NEXT_PUBLIC_ATTRIBUTION_TAG`. Cambia si hay equipo en Loops.
 - 2026-10-26 · Sumadas referencias de tag, ERC-8004 y bridges. El Identity Registry de testnet es distinto al de mainnet.
@@ -178,3 +203,13 @@ Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 - 2026-10-25 · Proyecto elegido: mezcla de las ideas de Lei (cobro cross-border sin dólar + cobro por hitos con garantía).
 
 Pendiente de definir: si el equipo se registra como team en Loops (y su tag), la ruta de FX definitiva (PAC-08), el usuario de GitHub de Flor.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
