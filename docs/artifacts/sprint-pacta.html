@@ -1,0 +1,279 @@
+<title>Sprints Pactá</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: ticket ledger grouped by sprint, filter bar on top, status chip per ticket */
+:root {
+  --bg: #f6f7f3; --surface: #ffffff; --ink: #17231d; --muted: #56645c; --line: #d9ded7;
+  --accent: #1f7a4d; --accent-soft: #e2f0e7; --mark: #f4e94a; --mark-ink: #17231d;
+  --prog: #9a5b00; --prog-soft: #fbf0dc; --mavi: #6b3fa0; --mavi-soft: #efe6f8; --flor: #b0456b; --flor-soft: #f9e5ec; --leila: #1d6a8a; --leila-soft: #e1eff5; --clau: #8a5a12; --clau-soft: #f5ecdc;
+  --display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111814; --surface: #18211c; --ink: #e6ede8; --muted: #9db0a5; --line: #2c3a32;
+    --accent: #5fd396; --accent-soft: #1d3527; --mark: #e8dd3c; --mark-ink: #111814;
+    --prog: #f0b85a; --prog-soft: #33281a; --mavi: #c4a2f0; --mavi-soft: #2b2238; --flor: #f096b6; --flor-soft: #3a2029; --leila: #7cc4e4; --leila-soft: #1a2e38; --clau: #e6b569; --clau-soft: #33281a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111814; --surface: #18211c; --ink: #e6ede8; --muted: #9db0a5; --line: #2c3a32;
+  --accent: #5fd396; --accent-soft: #1d3527; --mark: #e8dd3c; --mark-ink: #111814;
+  --prog: #f0b85a; --prog-soft: #33281a; --mavi: #c4a2f0; --mavi-soft: #2b2238; --flor: #f096b6; --flor-soft: #3a2029; --leila: #7cc4e4; --leila-soft: #1a2e38; --clau: #e6b569; --clau-soft: #33281a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 36px 80px; }
+h1, h2 { font-family: var(--display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 44px); }
+h2 { font-size: 22px; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+.lede { color: var(--muted); max-width: 68ch; margin: 10px 0 0; }
+.lede a { color: var(--accent); }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin: 24px 0 8px; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.filters button { font: 500 13px/1 var(--body); border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 8px 12px; border-radius: 99px; cursor: pointer; }
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.filters button:focus-visible, .chip:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sync { font: 400 12px/1.4 var(--mono); color: var(--muted); }
+.sprint { margin-top: 30px; }
+.sprint-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; padding-bottom: 10px; border-bottom: 2px solid var(--ink); }
+.sprint-head .dates { font: 500 13px/1 var(--mono); color: var(--muted); }
+.sprint-goal { margin: 10px 0 4px; color: var(--muted); font-size: 14px; max-width: 72ch; }
+.progress { display: flex; align-items: center; gap: 10px; font: 500 12px/1 var(--mono); color: var(--muted); margin: 10px 0 6px; }
+.progress .track { flex: 1; max-width: 260px; height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.progress .fill { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+@media (prefers-reduced-motion: reduce) { .progress .fill { transition: none; } }
+.ticket { border-bottom: 1px solid var(--line); }
+.ticket summary { list-style: none; display: grid; grid-template-columns: 74px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 11px 4px; cursor: pointer; }
+.ticket summary::-webkit-details-marker { display: none; }
+.tid { font: 500 12px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.ttl { min-width: 0; font-weight: 500; }
+.ticket.done .ttl { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
+.who { font: 500 11.5px/1 var(--mono); padding: 5px 8px; border-radius: 99px; white-space: nowrap; }
+.who.Mavi { background: var(--mavi-soft); color: var(--mavi); }
+.who.Flor { background: var(--flor-soft); color: var(--flor); }
+.who.Leila { background: var(--leila-soft); color: var(--leila); }
+.who.Clau { background: var(--clau-soft); color: var(--clau); }
+.who.Todas { background: var(--accent-soft); color: var(--accent); }
+.lvl { font: 500 11.5px/1 var(--mono); padding: 4px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.lvl.D { border-color: var(--ink); color: var(--ink); }
+.legend a { color: var(--accent); }
+.size { font: 500 11.5px/1 var(--mono); color: var(--muted); border: 1px solid var(--line); padding: 4px 6px; border-radius: 4px; }
+.chip { font: 500 12px/1 var(--mono); border: 1px solid var(--line); background: var(--surface); color: var(--muted); padding: 7px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; min-width: 92px; }
+.chip[data-s="curso"] { background: var(--prog-soft); color: var(--prog); border-color: transparent; }
+.chip[data-s="hecho"] { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.chip:disabled { cursor: default; opacity: .85; }
+.body { padding: 0 4px 16px 90px; font-size: 14px; display: grid; gap: 6px; }
+.body p { margin: 0; max-width: 70ch; }
+.body ul { margin: 0; padding-left: 18px; }
+.body .lbl { font: 500 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+.dep { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+.extra { opacity: .8; }
+mark { background: var(--mark); color: var(--mark-ink); padding: 0 3px; border-radius: 2px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); margin-top: 14px; }
+@media (max-width: 640px) {
+  .ticket summary { grid-template-columns: 56px minmax(0, 1fr) auto; row-gap: 8px; }
+  .ticket summary .lvl { display: none; }
+  .ticket summary .who { grid-column: 2; justify-self: start; }
+  .ticket summary .chip { grid-column: 3; grid-row: 1; }
+  .body { padding-left: 4px; }
+}
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">Pactá · Agents on Open Rails</div>
+  <h1>Sprints del equipo</h1>
+  <p class="lede">Tickets de desarrollo para las fases del <a href="https://claude.ai/artifact/8PLcmc9c3CBb7xad6q2wRG">Plan Pactá</a>. Tocá un ticket para ver qué hay que hacer y cuándo está terminado. Tocá el estado para pasarlo de <b>Por hacer</b> a <b>En curso</b> y a <b>Hecho</b>, y lo ven todas.</p>
+  <div class="legend"><span>Cada ticket es chico: de medio día a un día de trabajo.</span><span>Repo: <a href="https://github.com/marianelavflora/pacta">github.com/marianelavflora/pacta</a></span></div>
+
+  <div class="bar">
+    <div class="filters" role="group" aria-label="Filtrar por persona">
+      <button type="button" id="f-todas" data-f="todas" aria-pressed="true">Todas</button>
+      <button type="button" id="f-mavi" data-f="Mavi" aria-pressed="false">Mavi</button>
+      <button type="button" id="f-flor" data-f="Flor" aria-pressed="false">Flor</button>
+      <button type="button" id="f-leila" data-f="Leila" aria-pressed="false">Leila</button>
+      <button type="button" id="f-clau" data-f="Clau" aria-pressed="false">Clau</button>
+      <button type="button" id="f-pend" data-f="pend" aria-pressed="false">Sin terminar</button>
+    </div>
+    <div class="sync" id="sync">Conectando los estados…</div>
+  </div>
+
+  <div id="board"></div>
+</div>
+
+<script>
+const SPRINTS = [
+  { id: "s1", name: "Sprint 1 · Base y núcleo", dates: "lun 26 – sáb 31 oct", goal: "Fases 0 y 1. Al final, un acuerdo por hitos en la misma moneda anda de punta a punta en testnet." },
+  { id: "s2", name: "Sprint 2 · Cross-border y mainnet", dates: "dom 1 – jue 5 nov", goal: "Fases 2 y 3. Al final, el MVP completo corre en mainnet: FX, IA, avisos y auto-liberación." },
+  { id: "s3", name: "Sprint 3 · Usuarios reales y entrega", dates: "vie 6 – dom 8 nov", goal: "Fases 4 y 5. Usuarios independientes usando Pactá, demo grabada y entrega en los dos tracks." }
+];
+const T = [
+  // Sprint 1 · Base y núcleo
+  ["PAC-01","s1","Mavi","D","Estructura del repo y deploy","En el repo pacta: Next.js con TypeScript, carpetas (app, lib, agent), ESLint y deploy automático en Vercel.",["Cada push a main se publica solo en Vercel.","Las chicas clonan y corren el proyecto siguiendo el README."],[]],
+  ["PAC-02","s1","Leila","I","Supabase: usuarias y acuerdos","Crear el proyecto en Supabase y las tablas usuarias y acuerdos con los campos del plan.",["Las tablas existen y se ven en el panel de Supabase."],["PAC-01"]],
+  ["PAC-03","s1","Leila","I","Supabase: hitos, movimientos y cotizaciones","Crear las otras tres tablas y sus relaciones con acuerdos.",["Se puede cargar un acuerdo con 3 hitos a mano desde el panel."],["PAC-02"]],
+  ["PAC-04","s1","Clau","F","Guía para correr el proyecto","Archivo .env.example con todas las variables (sin valores secretos) y una sección del README que explique paso a paso cómo correr Pactá en la compu.",["Alguien del equipo sigue la guía sin ayuda y le anda."],["PAC-01"]],
+  ["PAC-05","s1","Mavi","D","Cliente de wallet con tag","Un solo archivo en lib/ que crea el cliente viem con withAttribution(tag) y feeCurrency. Todo el código manda transacciones por acá.",["Una transacción de prueba en testnet sale con el tag."],["PAC-01"]],
+  ["PAC-06","s1","Mavi","F","Wallet de testnet del agente","Crear la wallet de testnet, pedir CELO en el faucet y guardar la clave como variable secreta.",["La wallet tiene saldo y la clave no está en el repo."],[]],
+  ["PAC-07","s1","Mavi","D","Monedas de prueba tARS y tBRL","Si wARS y wBRL no existen en testnet, desplegar dos tokens ERC-20 de prueba y repartir saldo a las wallets del equipo.",["Las cuatro tienen tARS y tBRL en sus wallets de testnet."],["PAC-06"]],
+  ["PAC-08","s1","Leila","I","Investigar Textile y DEX de respaldo","Averiguar cómo se integra Textile, si hay liquidez wBRL→wARS en mainnet y qué DEX sirve de respaldo. Preguntar en el Telegram del hack y en Office Hours del jueves 29 a las 09:00.",["Hay una nota en docs/fx.md con la ruta elegida, contratos y ejemplos."],[]],
+  ["PAC-09","s1","Clau","F","Pedir WhatsApp y plantillas","Abrir la cuenta de WhatsApp Business o Twilio, activar el sandbox y mandar a aprobar las plantillas del aviso del día 3 y del día 6.",["Las plantillas están enviadas.","El sandbox manda un mensaje de prueba a nuestros celulares."],[]],
+  ["PAC-10","s1","Flor","F","Base visual","Instalar Tailwind y shadcn/ui, y armar el layout con el logo de Pactá arriba.",["Todas las páginas usan el mismo layout."],["PAC-01"]],
+  ["PAC-11","s1","Flor","F","Páginas vacías y navegación","Crear las páginas: inicio, crear acuerdo, vista del cliente (/a/[id]) y vista de la freelancer.",["Se puede navegar entre todas y se ven bien en el celular."],["PAC-10"]],
+  ["PAC-12","s1","Flor","I","Botón conectar wallet","Configurar wagmi para Celo testnet y hacer el botón conectar y desconectar (MiniPay o MetaMask).",["Conecta y muestra la dirección corta."],["PAC-11"]],
+  ["PAC-13","s1","Flor","I","Saldo y red correcta","Mostrar el saldo de tARS y tBRL, y avisar si la wallet está en otra red con un botón para cambiarla.",["Con la red equivocada aparece el aviso."],["PAC-12","PAC-07"]],
+  ["PAC-14","s1","Leila","I","API: crear acuerdo","Endpoint POST que guarda un acuerdo con sus hitos y devuelve el link para el cliente.",["Si los hitos no suman el total, devuelve un error claro."],["PAC-03"]],
+  ["PAC-15","s1","Leila","F","API: leer acuerdo","Endpoint GET que devuelve un acuerdo con sus hitos y estados.",["Un id que no existe devuelve 404."],["PAC-14"]],
+  ["PAC-16","s1","Clau","F","Formulario: datos del trabajo","Primera parte del formulario: descripción, wallet o contacto del cliente, moneda del cliente y moneda de cobro.",["Los campos obligatorios avisan si están vacíos."],["PAC-11"]],
+  ["PAC-17","s1","Clau","I","Formulario: lista de hitos","Agregar y sacar hitos (título, monto y plazo) y mostrar el total en vivo.",["El total se actualiza al cambiar cualquier monto."],["PAC-16"]],
+  ["PAC-18","s1","Clau","F","Guardar y compartir link","Mandar el formulario a la API y mostrar el link del cliente con un botón para copiarlo.",["El link copiado abre la vista del cliente."],["PAC-14","PAC-17"]],
+  ["PAC-19","s1","Flor","I","Vista del cliente","Mostrar el acuerdo, los hitos y el total a depositar en la página del cliente.",["Muestra los datos reales del acuerdo."],["PAC-15","PAC-11"]],
+  ["PAC-20","s1","Mavi","D","Depósito con tag desde el navegador","Botón depositar: transferencia ERC-20 a la wallet del agente, firmada por el cliente y con el tag del equipo.",["El depósito llega con el tag y la pantalla muestra el link al explorador."],["PAC-05","PAC-19"]],
+  ["PAC-21","s1","Mavi","D","Bóveda: detectar depósitos","Tarea programada que lee las transferencias que llegan al agente, las asigna al acuerdo y lo marca como financiado.",["Un depósito cambia el acuerdo a financiado en menos de 5 minutos.","El mismo depósito nunca se cuenta dos veces."],["PAC-20"]],
+  ["PAC-22","s1","Leila","F","API: entregar hito","Endpoint que marca un hito como entregado, con link y nota.",["Solo se puede entregar un hito financiado."],["PAC-15"]],
+  ["PAC-23","s1","Clau","F","Vista freelancer: entregar hito","Botón \"Entregar\" en cada hito con un pequeño formulario de link y nota.",["El hito pasa a entregado y el cliente lo ve."],["PAC-22"]],
+  ["PAC-24","s1","Flor","I","Botón aprobar con firma","En la vista del cliente, botón \"Aprobar\" que pide una firma a la wallet (sin gas) y la manda a la API.",["Al firmar, el hito pasa a aprobado."],["PAC-19","PAC-25"]],
+  ["PAC-25","s1","Mavi","D","API: verificar firma y aprobar","La API verifica que la firma sea de la wallet del cliente del acuerdo y aprueba el hito.",["Una firma de otra wallet se rechaza."],["PAC-22"]],
+  ["PAC-26","s1","Mavi","D","Liberador v1","El agente paga los hitos aprobados en la misma moneda, una sola vez por hito, y guarda el movimiento.",["Si la tarea corre dos veces, igual paga una sola vez."],["PAC-21","PAC-25"]],
+  ["PAC-27","s1","Flor","F","Recibo v1","Página de recibo por hito: monto, fecha y link a la transacción.",["Cada hito pagado tiene su recibo."],["PAC-26"]],
+  ["PAC-28","s1","Leila","I","Prueba punta a punta del sprint 1","Script o checklist que recorre crear, depositar, entregar, aprobar y pagar en testnet, y anota lo que falla.",["Corre completo al menos una vez sin errores."],["PAC-26","PAC-27"]],
+  // Sprint 2 · Cross-border y mainnet
+  ["PAC-29","s2","Mavi","D","Cotizador: Textile","Pedir precio wBRL→wARS a Textile según lo que encontró Leila.",["Devuelve precio y ruta para un monto dado."],["PAC-08"]],
+  ["PAC-30","s2","Mavi","D","Cotizador: respaldo y mejor precio","Pedir precio al DEX de respaldo, elegir el mejor y guardar la cotización.",["Si una fuente falla, usa la otra."],["PAC-29"]],
+  ["PAC-31","s2","Leila","I","Precio de referencia","Traer un precio de referencia BRL/ARS (por ejemplo, de Ripio) y guardarlo con cada cotización.",["Cada cotización tiene su referencia y la diferencia en %."],["PAC-03"]],
+  ["PAC-32","s2","Mavi","D","Convertir al liberar","El liberador convierte el tramo y después paga en wARS. Si la conversión falla, no se marca pagado.",["Quedan guardados los dos movimientos con el tipo de cambio."],["PAC-26","PAC-30"]],
+  ["PAC-33","s2","Flor","I","Cotización en la vista del cliente","Mostrar cuánto paga el cliente en su moneda y cuánto recibe la freelancer aproximadamente.",["Los números coinciden con la API de cotización."],["PAC-30","PAC-31"]],
+  ["PAC-34","s2","Flor","F","Recibo v2 con tipo de cambio","Sumar al recibo el tipo de cambio, la comparación con la referencia y los dos links on-chain.",["El recibo muestra conversión y pago."],["PAC-32","PAC-27"]],
+  ["PAC-35","s2","Mavi","D","Intake con Claude","La API manda el texto libre a Claude y recibe hitos en JSON, que se validan antes de devolverlos.",["Si la respuesta no es válida, se reintenta una vez o avisa."],["PAC-14"]],
+  ["PAC-36","s2","Leila","I","Tests del intake","Cinco textos de ejemplo con el resultado esperado y un test que los corre contra el intake.",["Los cinco casos pasan."],["PAC-35"]],
+  ["PAC-37","s2","Clau","I","Pantalla de intake","Caja de texto donde la freelancer cuenta el trabajo y la propuesta de hitos aparece cargada en el formulario para editar.",["Editar un hito de la propuesta actualiza el total."],["PAC-35","PAC-17"]],
+  ["PAC-38","s2","Leila","I","Recordatorio del día 3","Tarea programada que encuentra hitos entregados sin respuesta hace 3 días y los marca como recordados.",["Con plazos en minutos, el hito pasa a recordado a tiempo."],["PAC-22"]],
+  ["PAC-39","s2","Mavi","D","Auto-liberación del día 6","Si el hito recordado sigue sin respuesta 3 días más, el liberador lo paga solo.",["Si el cliente aprueba justo antes, no se paga dos veces."],["PAC-38","PAC-32"]],
+  ["PAC-40","s2","Clau","I","Función enviar WhatsApp","Función enviarAviso(número, plantilla, datos) que manda un WhatsApp con Twilio o la API de Meta.",["Manda las dos plantillas al celular de prueba."],["PAC-09"]],
+  ["PAC-41","s2","Leila","F","Mail de respaldo","Función enviarMail con Resend usando los mismos textos que WhatsApp.",["Si WhatsApp falla, llega el mail."],["PAC-40"]],
+  ["PAC-42","s2","Clau","I","Avisos en cada cambio de estado","Llamar a enviarAviso cuando un acuerdo se financia y cuando un hito se entrega, se recuerda, se aprueba o se paga.",["Cada estado manda su aviso con el link correcto."],["PAC-40","PAC-38"]],
+  ["PAC-43","s2","Mavi","D","Paso a mainnet (mié 4 nov)","Fecha fija. Confirmar el equipo en Loops y su tag, crear la wallet definitiva, fondearla con CELO y wARS y mandar la primera transacción con el tag del equipo.",["La transacción aparece en el leaderboard del equipo.","Cambiar de red es una sola variable."],["PAC-32"]],
+  ["PAC-44","s2","Flor","F","Agent card","Publicar en la web el JSON de la agent card: nombre, descripción, logo y servicios.",["El JSON se abre desde una URL pública."],["PAC-10"]],
+  ["PAC-45","s2","Mavi","I","Registro ERC-8004","Llamar a register desde la wallet del agente, con el tag, y sumar el agentId a la agent card.",["El agente aparece en el Identity Registry de Celo."],["PAC-43","PAC-44"]],
+  ["PAC-46","s2","Flor","I","Topes y errores simples","Mostrar el monto máximo por acuerdo y explicar en palabras simples los errores (sin saldo, red equivocada, firma rechazada).",["Ningún error muestra texto técnico."],["PAC-24"]],
+  // Sprint 3 · Usuarios reales y entrega
+  ["PAC-47","s3","Flor","I","Pulido en celular y MiniPay","Probar todo el flujo dentro de MiniPay y en celulares, y arreglar lo que se vea mal.",["Un acuerdo completo se hace solo desde el celular."],["PAC-37","PAC-34"]],
+  ["PAC-48","s3","Clau","F","Página \"Cómo funciona\"","Página corta con los pasos de Pactá para freelancers y clientes nuevos, con capturas.",["Un usuario nuevo entiende qué hacer sin preguntar."],["PAC-37"]],
+  ["PAC-49","s3","Todas","I","Arreglos con usuarios reales","Acompañar a los primeros usuarios independientes y arreglar lo que rompan. Mavi revisa todo lo que toque pagos.",["Cada bug tiene arreglo o queda anotado."],["PAC-43"]],
+  ["PAC-50","s3","Leila","F","README para el jurado","Qué hace Pactá, para quién, cómo se corre, direcciones de contratos, wallet del agente y agentId.",["Alguien de afuera entiende el proyecto leyendo solo el README."],["PAC-45"]],
+  ["PAC-51","s3","Clau","F","Diagrama en el README","Diagrama del flujo y de la arquitectura en mermaid dentro del README.",["El diagrama se ve en GitHub."],["PAC-50"]],
+  ["PAC-52","s3","Flor","F","Video demo","Grabar la demo de 2 a 3 minutos mostrando un pago cross-border real en mainnet.",["El video está subido y el link está en el README."],["PAC-47"]],
+  ["PAC-53","s3","Mavi","I","Entrega (dom 8 nov)","Congelar el código, revisar el checklist de la hackathon y enviar en Stable Agents LatAm y Textile FX.",["Entregado antes del domingo a la noche."],["PAC-50","PAC-52"]],
+  ["PAC-54","s3","Mavi","D","Extra: contrato de garantía","Solo si todo lo anterior está verde: contrato chico con OpenZeppelin y Foundry que reemplaza a la bóveda del agente.",["Tests pasan y el contrato está verificado."],["PAC-53"],true]
+];
+const TICKETS = T.map(([id, sprint, who, level, title, desc, done, deps, extra]) => ({ id, sprint, who, level, title, desc, done, deps, extra: !!extra }));
+const LEVEL = { F: "Fácil", I: "Intermedia", D: "Difícil" };
+const LABEL = { todo: "Por hacer", curso: "En curso", hecho: "Hecho" };
+const NEXT = { todo: "curso", curso: "hecho", hecho: "todo" };
+
+let state = {};
+let filter = "todas";
+try { const f = localStorage.getItem("pacta-filter"); if (f) filter = f; } catch (e) {}
+let db = null;
+let canWrite = false;
+const syncEl = document.getElementById("sync");
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function statusOf(id) { return (state[id] && state[id].s) || "todo"; }
+
+function render() {
+  const open = new Set([...document.querySelectorAll("details.ticket[open]")].map(d => d.dataset.id));
+  const board = document.getElementById("board");
+  board.innerHTML = SPRINTS.map(sp => {
+    const all = TICKETS.filter(t => t.sprint === sp.id);
+    const doneCount = all.filter(t => statusOf(t.id) === "hecho").length;
+    const shown = all.filter(t => {
+      if (["Mavi","Flor","Leila","Clau"].includes(filter)) return t.who === filter || t.who === "Todas";
+      if (filter === "pend") return statusOf(t.id) !== "hecho";
+      return true;
+    });
+    const pct = all.length ? Math.round(doneCount / all.length * 100) : 0;
+    return `<section class="sprint">
+      <div class="sprint-head"><h2>${esc(sp.name)}</h2><span class="dates">${esc(sp.dates)}</span></div>
+      <p class="sprint-goal">${esc(sp.goal)}</p>
+      <div class="progress"><div class="track"><div class="fill" style="width:${pct}%"></div></div><span>${doneCount} de ${all.length} hechos</span></div>
+      ${shown.map(t => {
+        const s = statusOf(t.id);
+        return `<details class="ticket${s === "hecho" ? " done" : ""}${t.extra ? " extra" : ""}" data-id="${t.id}"${open.has(t.id) ? " open" : ""}>
+          <summary>
+            <span class="tid">${t.id}</span>
+            <span class="ttl">${esc(t.title)}</span>
+            <span class="who ${t.who}">${t.who}</span>
+            <button type="button" class="chip" id="chip-${t.id}" data-id="${t.id}" data-s="${s}" ${canWrite ? "" : "disabled"} aria-label="Estado de ${t.id}: ${LABEL[s]}">${LABEL[s]}</button>
+          </summary>
+          <div class="body">
+            <p>${t.desc}</p>
+            <div class="lbl">Está listo cuando</div>
+            <ul>${t.done.map(d => `<li>${esc(d)}</li>`).join("")}</ul>
+            ${t.deps.length ? `<div class="dep">Necesita antes: ${t.deps.join(", ")}</div>` : ""}
+          </div>
+        </details>`;
+      }).join("") || `<p class="sprint-goal">Nada para mostrar con este filtro.</p>`}
+    </section>`;
+  }).join("");
+}
+
+document.querySelector(".filters").addEventListener("click", e => {
+  const b = e.target.closest("button[data-f]"); if (!b) return;
+  filter = b.dataset.f;
+  document.querySelectorAll(".filters button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  try { localStorage.setItem("pacta-filter", filter); } catch (err) {}
+  render();
+});
+document.querySelectorAll(".filters button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.f === filter)));
+
+const pending = new Set();
+document.getElementById("board").addEventListener("click", async e => {
+  const chip = e.target.closest(".chip"); if (!chip) return;
+  e.preventDefault(); e.stopPropagation();
+  if (!db || !canWrite) return;
+  const id = chip.dataset.id;
+  if (pending.has(id)) return;
+  const next = NEXT[statusOf(id)];
+  const prev = state[id];
+  state = { ...state, [id]: { s: next } };
+  render();
+  pending.add(id);
+  try {
+    await db.collection("status").doc(id).set({ s: next, at: new Date().toISOString() });
+  } catch (err) {
+    state = { ...state, [id]: prev };
+    render();
+    syncEl.textContent = "No se pudo guardar el cambio. Puede que no tengas permiso para editar esta página.";
+  } finally { pending.delete(id); }
+});
+
+render();
+
+(async () => {
+  try {
+    db = await window.claude?.use?.("db");
+    const user = await window.claude?.use?.("user");
+    if (!db) { syncEl.textContent = "Los estados solo se ven con la sesión iniciada en Claude."; return; }
+    const w = user ? user.can("data.write") : null;
+    canWrite = w !== false;
+    syncEl.textContent = canWrite ? "Estados compartidos en vivo" : "Solo lectura: pedile a Mavi acceso para editar";
+    db.collection("status").onSnapshot(snap => {
+      const next = {};
+      snap.docs.forEach(d => { const v = d.data(); if (v && LABEL[v.s]) next[d.id] = { s: v.s }; });
+      state = next;
+      render();
+    }, () => { syncEl.textContent = "Se cortó la conexión. Recargá la página para ver los estados."; });
+  } catch (e) {
+    syncEl.textContent = "No se pudieron cargar los estados.";
+  }
+})();
+</script>
