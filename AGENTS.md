@@ -93,6 +93,8 @@ Mini standup por WhatsApp a la mañana (opcional): qué hice, qué hago hoy, en 
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
+- 2026-10-26 · README principal en inglés (lo lee el jurado); PLAN.md y AGENTS.md siguen en castellano. Las secciones *pending* del README las completan PAC-04, PAC-45, PAC-50 y PAC-52.
+- 2026-10-26 · Usuarios de GitHub: Mavi `marianelavflora`, Leila `leispini`, Clau `ClaudiaRivero863`.
 - 2026-10-26 · Las cuatro codean. Mavi toma pagos, wallet, blockchain e IA; el resto se reparte entre Flor, Leila y Clau.
 - 2026-10-26 · Tickets como issues PAC-01 a PAC-54, tablero en GitHub Projects, una rama y un PR por ticket. `main` no está protegida, pero no se pushea directo: todo entra por PR.
 - 2026-10-25 · Avisos por WhatsApp en vez de Telegram, con mail de respaldo.
@@ -101,4 +103,4 @@ Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 - 2026-10-25 · MVP con la wallet del agente como bóveda; el contrato de garantía es extra (PAC-54).
 - 2026-10-25 · Proyecto elegido: mezcla de las ideas de Lei (cobro cross-border sin dólar + cobro por hitos con garantía).
 
-Pendiente de definir: si el equipo se registra como team en Loops (y su tag), la ruta de FX definitiva (PAC-08), los usuarios de GitHub de Flor, Leila y Clau.
+Pendiente de definir: si el equipo se registra como team en Loops (y su tag), la ruta de FX definitiva (PAC-08), el usuario de GitHub de Flor.
