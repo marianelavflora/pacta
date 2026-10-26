@@ -60,6 +60,8 @@ Si una persona del equipo te pide ayuda con un ticket, explicá lo que hacés en
 | Tareas programadas | Vercel Cron |
 | Avisos | WhatsApp (API oficial de Meta o Twilio) + mail con Resend de respaldo. Nada de librerías no oficiales de WhatsApp |
 
+Tag de atribución actual: **`celo_dc3ce5f39b37`** (el personal de Mavi). Va en la variable `NEXT_PUBLIC_ATTRIBUTION_TAG`, nunca escrito en el código. Si antes de mainnet nos anotamos como equipo en Loops, se reemplaza por el tag del equipo (regla 5) y se cambia solo esa variable.
+
 Wallet del agente en **testnet** (Celo Sepolia, PAC-06): `0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`. La de mainnet se crea el 4 nov (PAC-43). La clave privada vive solo en `.env.local` y en Vercel como `AGENT_PRIVATE_KEY`.
 
 Contratos wFIAT en Celo mainnet: wARS `0x0dc4f92879b7670e5f4e4e6e3c801d229129d90d`, wBRL `0xd76f5faf6888e24d9f04bf92a0c8b921fe4390e0`, wMXN `0x337e7456b420bd3481e7fa61fa9850343d610d34`.
@@ -134,7 +136,7 @@ Dónde va cada cosa. Los tickets usan estos nombres; si cambiás uno, actualizá
 | `tests/`, `scripts/` | Tests (Vitest) y scripts sueltos |
 | `public/` | Logos (`public/brand/`) y `agent-card.json` |
 
-Variables de entorno clave: `NEXT_PUBLIC_CHAIN` (`celo-sepolia` o `celo`), `AGENT_PRIVATE_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `TWILIO_*`, `RESEND_API_KEY`, `CRON_SECRET`, `TIME_UNIT` (`days` o `minutes` para probar plazos rápido). Todas listadas en `.env.example`, sin valores.
+Variables de entorno clave: `NEXT_PUBLIC_CHAIN` (`celo-sepolia` o `celo`), `NEXT_PUBLIC_ATTRIBUTION_TAG`, `AGENT_PRIVATE_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `TWILIO_*`, `RESEND_API_KEY`, `CRON_SECRET`, `TIME_UNIT` (`days` o `minutes` para probar plazos rápido). Todas listadas en `.env.example`, sin valores.
 
 ## Cómo trabajamos
 
@@ -161,6 +163,7 @@ Mini standup por WhatsApp a la mañana (opcional): qué hice, qué hago hoy, en 
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
+- 2026-10-26 · Tag de atribución `celo_dc3ce5f39b37` (personal de Mavi) en `NEXT_PUBLIC_ATTRIBUTION_TAG`. Cambia si hay equipo en Loops.
 - 2026-10-26 · Sumadas referencias de tag, ERC-8004 y bridges. El Identity Registry de testnet es distinto al de mainnet.
 - 2026-10-26 · Wallet de testnet del agente creada: `0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`.
 - 2026-10-26 · Tickets de Flor, Leila y Clau reescritos en formato APB (paso a paso, archivos, cómo probar, palabras nuevas). Mapa del código y guía `docs/WORKFLOW.md`.
