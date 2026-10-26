@@ -62,7 +62,7 @@ Si una persona del equipo te pide ayuda con un ticket, explicá lo que hacés en
 
 Tag de atribución actual: **`celo_dc3ce5f39b37`** (el personal de Mavi). Va en la variable `NEXT_PUBLIC_ATTRIBUTION_TAG`, nunca escrito en el código. Si antes de mainnet nos anotamos como equipo en Loops, se reemplaza por el tag del equipo (regla 5) y se cambia solo esa variable.
 
-Wallet del agente: **pendiente**. La primera (`0xab569A…8E73`) quedó descartada porque su clave se vio en una captura. Hay que crear una nueva que nunca se haya mostrado, y esa es la que va al submit de Loops y se usa en testnet y en mainnet. La clave privada vive solo en `.env.local` y en Vercel como `AGENT_PRIVATE_KEY`. Nunca va en capturas, chats ni el repo.
+Wallet del agente (la del submit de Loops, para testnet y mainnet): `0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`. La clave privada vive solo en `.env.local` y en Vercel como `AGENT_PRIVATE_KEY`. Nunca va en capturas, chats ni el repo.
 
 Contratos wFIAT en Celo mainnet: wARS `0x0dc4f92879b7670e5f4e4e6e3c801d229129d90d`, wBRL `0xd76f5faf6888e24d9f04bf92a0c8b921fe4390e0`, wMXN `0x337e7456b420bd3481e7fa61fa9850343d610d34`.
 
@@ -163,7 +163,7 @@ Mini standup por WhatsApp a la mañana (opcional): qué hice, qué hago hoy, en 
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
-- 2026-10-26 · La wallet del agente es la del submit de Loops y se usa en testnet y mainnet (ya no se crea otra el 4 nov). La primera, `0xab569A…8E73`, se descarta porque su clave se vio en una captura.
+- 2026-10-26 · Wallet del agente confirmada por Mavi: `0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`. Es la del submit de Loops, se usa en testnet y en mainnet, y no se crea otra el 4 nov.
 - 2026-10-26 · Tag de atribución `celo_dc3ce5f39b37` (personal de Mavi) en `NEXT_PUBLIC_ATTRIBUTION_TAG`. Cambia si hay equipo en Loops.
 - 2026-10-26 · Sumadas referencias de tag, ERC-8004 y bridges. El Identity Registry de testnet es distinto al de mainnet.
 - 2026-10-26 · Tickets de Flor, Leila y Clau reescritos en formato APB (paso a paso, archivos, cómo probar, palabras nuevas). Mapa del código y guía `docs/WORKFLOW.md`.
