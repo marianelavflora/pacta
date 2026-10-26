@@ -60,6 +60,8 @@ Si una persona del equipo te pide ayuda con un ticket, explicá lo que hacés en
 | Tareas programadas | Vercel Cron |
 | Avisos | WhatsApp (API oficial de Meta o Twilio) + mail con Resend de respaldo. Nada de librerías no oficiales de WhatsApp |
 
+Wallet del agente en **testnet** (Celo Sepolia, PAC-06): `0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`. La de mainnet se crea el 4 nov (PAC-43). La clave privada vive solo en `.env.local` y en Vercel como `AGENT_PRIVATE_KEY`.
+
 Contratos wFIAT en Celo mainnet: wARS `0x0dc4f92879b7670e5f4e4e6e3c801d229129d90d`, wBRL `0xd76f5faf6888e24d9f04bf92a0c8b921fe4390e0`, wMXN `0x337e7456b420bd3481e7fa61fa9850343d610d34`.
 
 ## Convenciones de código
@@ -125,6 +127,7 @@ Mini standup por WhatsApp a la mañana (opcional): qué hice, qué hago hoy, en 
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
+- 2026-10-26 · Wallet de testnet del agente creada: `0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`.
 - 2026-10-26 · Tickets de Flor, Leila y Clau reescritos en formato APB (paso a paso, archivos, cómo probar, palabras nuevas). Mapa del código y guía `docs/WORKFLOW.md`.
 - 2026-10-26 · README principal en inglés (lo lee el jurado); PLAN.md y AGENTS.md siguen en castellano. Las secciones *pending* del README las completan PAC-04, PAC-45, PAC-50 y PAC-52.
 - 2026-10-26 · Usuarios de GitHub: Mavi `marianelavflora`, Leila `leispini`, Clau `ClaudiaRivero863`.
