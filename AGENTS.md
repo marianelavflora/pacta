@@ -70,6 +70,36 @@ Contratos wFIAT en Celo mainnet: wARS `0x0dc4f92879b7670e5f4e4e6e3c801d229129d90
 - Toda la lógica de cadena va en `lib/chain/`; la del agente (bóveda, liberador, cotizador) en `agent/`; la web en `app/`.
 - Cambios chicos y enfocados en el ticket. Si ves algo para mejorar fuera del ticket, anotalo en un issue nuevo en vez de mezclarlo.
 
+## Mapa del código
+
+Dónde va cada cosa. Los tickets usan estos nombres; si cambiás uno, actualizá esta tabla.
+
+| Ruta | Qué va |
+|---|---|
+| `app/page.tsx` | Inicio (`/`) |
+| `app/nuevo/` | Crear acuerdo (`/nuevo`) |
+| `app/a/[id]/` | Vista del cliente (`/a/<publicId>`) |
+| `app/f/[id]/` | Vista de la freelancer (`/f/<publicId>`) |
+| `app/recibo/[id]/` | Recibo de un hito (`/recibo/<milestoneId>`) |
+| `app/como-funciona/` | Página "Cómo funciona" |
+| `app/api/agreements/` | `POST` crear acuerdo, `GET [id]` leer acuerdo |
+| `app/api/milestones/[id]/deliver/` y `approve/` | Entregar y aprobar un hito |
+| `app/api/intake/`, `app/api/quote/`, `app/api/receipts/[id]/` | Intake con Claude, cotización, datos del recibo |
+| `app/api/cron/` | Tareas programadas (protegidas con `CRON_SECRET`) |
+| `components/` | Piezas de pantalla; `components/ui/` es shadcn |
+| `lib/db.ts` | Cliente de Supabase (solo servidor) |
+| `lib/chain/` | `wagmi.ts` (navegador), `wallet.ts` (cliente con tag, solo servidor), `tokens.ts` (direcciones por red), `approval.ts` (mensaje de firma) |
+| `lib/fx/` | Precio de referencia y comparación |
+| `lib/notify/` | `whatsapp.ts`, `email.ts`, `messages.ts` (textos), `events.ts` (un aviso por cambio de estado), `index.ts` (`notify`) |
+| `lib/validation/` | Esquemas de zod compartidos entre web y API |
+| `lib/ui/` | Textos de estados y errores amigables |
+| `agent/` | Bóveda, liberador, cotizador y recordatorios |
+| `supabase/migrations/` | SQL de las tablas: `users`, `agreements`, `milestones`, `movements`, `quotes` |
+| `tests/`, `scripts/` | Tests (Vitest) y scripts sueltos |
+| `public/` | Logos (`public/brand/`) y `agent-card.json` |
+
+Variables de entorno clave: `NEXT_PUBLIC_CHAIN` (`celo-sepolia` o `celo`), `AGENT_PRIVATE_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `TWILIO_*`, `RESEND_API_KEY`, `CRON_SECRET`, `TIME_UNIT` (`days` o `minutes` para probar plazos rápido). Todas listadas en `.env.example`, sin valores.
+
 ## Cómo trabajamos
 
 1. Agarrá un issue tuyo cuyo "Depende de" ya esté hecho y movelo a **En curso** en el tablero.
@@ -78,6 +108,8 @@ Contratos wFIAT en Celo mainnet: wARS `0x0dc4f92879b7670e5f4e4e6e3c801d229129d90
 4. Abrí un PR con la plantilla y `Closes #XX`. Al mergear, el issue se cierra y pasa a **Hecho** solo.
 5. Pedí revisión a otra persona del equipo. Lo que toque wallet, pagos, liberador o FX lo revisa **Mavi**.
 6. Si cambia una decisión del proyecto, actualizá en el mismo PR [`docs/PLAN.md`](docs/PLAN.md) y la sección de abajo.
+
+Guía paso a paso, con comandos y qué hacer si algo se complica: [`docs/WORKFLOW.md`](docs/WORKFLOW.md).
 
 Mini standup por WhatsApp a la mañana (opcional): qué hice, qué hago hoy, en qué estoy trabada.
 
@@ -93,6 +125,7 @@ Mini standup por WhatsApp a la mañana (opcional): qué hice, qué hago hoy, en 
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
+- 2026-10-26 · Tickets de Flor, Leila y Clau reescritos en formato APB (paso a paso, archivos, cómo probar, palabras nuevas). Mapa del código y guía `docs/WORKFLOW.md`.
 - 2026-10-26 · README principal en inglés (lo lee el jurado); PLAN.md y AGENTS.md siguen en castellano. Las secciones *pending* del README las completan PAC-04, PAC-45, PAC-50 y PAC-52.
 - 2026-10-26 · Usuarios de GitHub: Mavi `marianelavflora`, Leila `leispini`, Clau `ClaudiaRivero863`.
 - 2026-10-26 · Las cuatro codean. Mavi toma pagos, wallet, blockchain e IA; el resto se reparte entre Flor, Leila y Clau.

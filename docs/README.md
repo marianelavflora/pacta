@@ -3,6 +3,7 @@
 | Archivo | Qué es |
 |---|---|
 | [`PLAN.md`](PLAN.md) | El plan de desarrollo vivo: idea, requisitos, módulos, datos, fases y riesgos. **Es la fuente de verdad del plan.** |
+| [`WORKFLOW.md`](WORKFLOW.md) | Cómo trabajamos con issues, ramas y PRs, paso a paso y con comandos. |
 | [`../AGENTS.md`](../AGENTS.md) | Contexto y reglas para agentes de IA y para el equipo, más el registro de decisiones. |
 | [`hackathon/overview.md`](hackathon/overview.md) | Resumen de la hackathon Agents on Open Rails: fechas, tracks, reglas e ideas iniciales. |
 | [`hackathon/submit-description.md`](hackathon/submit-description.md) | Texto de la descripción para el submit en Loops. |
