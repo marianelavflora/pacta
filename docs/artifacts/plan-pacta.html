@@ -1,0 +1,477 @@
+<title>Plan Pactá</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column with a sticky index on wide screens; phases as a dated ledger */
+:root {
+  --bg: #f6f7f3;
+  --surface: #ffffff;
+  --ink: #17231d;
+  --muted: #56645c;
+  --line: #d9ded7;
+  --accent: #1f7a4d;        /* Celo-ish green, ink side */
+  --accent-soft: #e2f0e7;
+  --mark: #f4e94a;          /* Celo yellow highlighter */
+  --mark-ink: #17231d;
+  --warn: #9a5b00;
+  --warn-soft: #fbf0dc;
+  --risk: #a3352b;
+  --risk-soft: #f8e4e1;
+  --display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111814; --surface: #18211c; --ink: #e6ede8; --muted: #9db0a5; --line: #2c3a32;
+    --accent: #5fd396; --accent-soft: #1d3527; --mark: #e8dd3c; --mark-ink: #111814;
+    --warn: #f0b85a; --warn-soft: #33281a; --risk: #f08a7e; --risk-soft: #3a211e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111814; --surface: #18211c; --ink: #e6ede8; --muted: #9db0a5; --line: #2c3a32;
+  --accent: #5fd396; --accent-soft: #1d3527; --mark: #e8dd3c; --mark-ink: #111814;
+  --warn: #f0b85a; --warn-soft: #33281a; --risk: #f08a7e; --risk-soft: #3a211e;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 15.5px/1.6 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 40px 80px; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 48px; }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-size: 13px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+nav.toc a { color: var(--muted); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); }
+.toc-label { font: 500 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+main { min-width: 0; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.15; }
+h1 { font-size: clamp(34px, 6vw, 52px); margin: 0 0 12px; letter-spacing: -.01em; }
+h2 { font-size: 26px; margin: 0 0 14px; }
+h3 { font-size: 18px; margin: 22px 0 8px; }
+p, li { max-width: 68ch; }
+section { padding-block: 28px; border-top: 1px solid var(--line); }
+section:first-of-type { border-top: 0; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+.lede { font-size: 18px; color: var(--ink); }
+.meta { color: var(--muted); font-size: 13px; font-family: var(--mono); }
+mark { background: var(--mark); color: var(--mark-ink); padding: 0 3px; border-radius: 2px; }
+code { font-family: var(--mono); font-size: .9em; background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere; }
+a { color: var(--accent); }
+.pitch { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; margin-top: 22px; }
+.pitch p { margin: 0; font-size: 17px; }
+.blend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.blend > div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.blend .tag { font: 500 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.blend h3 { margin: 6px 0 6px; font-size: 16px; }
+.blend p, .blend ul { font-size: 14px; margin: 0; padding-left: 0; }
+.blend ul { padding-left: 18px; }
+.blend .mix { border-color: var(--accent); background: var(--accent-soft); }
+.tbl { overflow-x: auto; margin-top: 12px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+th { font: 500 11.5px/1.3 var(--mono); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+td.id { font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+.pill { display: inline-block; font: 500 11px/1.6 var(--mono); padding: 0 7px; border-radius: 99px; white-space: nowrap; }
+.p-must { background: var(--accent-soft); color: var(--accent); }
+.p-nice { background: var(--warn-soft); color: var(--warn); }
+.p-stretch { background: var(--line); color: var(--muted); }
+.modules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.mod { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; background: var(--surface); min-width: 0; }
+.mod .code { font: 500 11px/1 var(--mono); color: var(--muted); }
+.mod h3 { margin: 6px 0 4px; font-size: 16px; }
+.mod p { font-size: 14px; margin: 0; }
+.mod .who { margin-top: 8px; font-size: 12px; color: var(--muted); font-family: var(--mono); }
+pre.mermaid { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; overflow-x: auto; }
+.states { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; font: 500 12.5px/1 var(--mono); }
+.states span.s { border: 1px solid var(--accent); color: var(--accent); padding: 6px 9px; border-radius: 99px; background: var(--surface); }
+.states span.a { color: var(--muted); }
+.phases { display: grid; gap: 0; margin-top: 14px; }
+.phase { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 20px; padding-block: 18px; border-top: 1px dashed var(--line); }
+.phase:first-child { border-top: 0; }
+.phase .when { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.phase .when b { display: block; font-family: var(--display); font-size: 20px; color: var(--ink); font-weight: 700; margin-bottom: 2px; }
+.phase h3 { margin: 0 0 6px; }
+.phase ul { margin: 6px 0 0; padding-left: 18px; font-size: 14.5px; }
+.phase .done { margin-top: 8px; font-size: 13.5px; background: var(--accent-soft); padding: 8px 10px; border-radius: 6px; }
+.phase.final .when b { color: var(--risk); }
+.callout { border-left: 3px solid var(--warn); background: var(--warn-soft); padding: 12px 16px; border-radius: 0 6px 6px 0; margin: 16px 0; font-size: 14.5px; }
+.callout.risk { border-color: var(--risk); background: var(--risk-soft); }
+.team { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.team > div { border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: var(--surface); min-width: 0; font-size: 14px; }
+.team b { font-family: var(--display); font-size: 17px; display: block; }
+.team .role { color: var(--accent); font-size: 12.5px; font-family: var(--mono); margin-bottom: 6px; display: block; }
+ol.q { padding-left: 20px; }
+ol.q li { margin-bottom: 8px; }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 0; padding-block: 24px 60px; }
+  nav.toc { display: none; }
+  .blend, .modules, .team { grid-template-columns: minmax(0, 1fr); }
+  .phase { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+}
+@media (min-width: 861px) and (max-width: 1000px) { .team { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="Índice">
+  <div class="toc-label">Plan</div>
+  <ol>
+    <li><a href="#idea">La idea</a></li>
+    <li><a href="#mezcla">Cómo mezclamos A + B</a></li>
+    <li><a href="#usuarios">Usuarios y flujo</a></li>
+    <li><a href="#requisitos">Requisitos</a></li>
+    <li><a href="#reglas">Reglas de la hackathon</a></li>
+    <li><a href="#modulos">Arquitectura y módulos</a></li>
+    <li><a href="#tecnologias">Tecnologías</a></li>
+    <li><a href="#datos">Datos y estados</a></li>
+    <li><a href="#fases">Fases</a></li>
+    <li><a href="#equipo">Equipo</a></li>
+    <li><a href="#fuera">Fuera de alcance</a></li>
+    <li><a href="#riesgos">Riesgos</a></li>
+    <li><a href="#decisiones">Decisiones abiertas</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="idea">
+  <div class="eyebrow">Agents on Open Rails · Plan de proyecto · v1</div>
+  <h1>Pactá</h1>
+  <p class="meta">Nombre provisorio · Mezcla de las ideas A y B de Lei · 25 oct 2026 · Entrega: lun 9 nov 06:00 ART (objetivo real: dom 8 nov)</p>
+  <div class="pitch">
+    <p><b>Un agente que cobra trabajos por hitos entre países, sin pasar por el dólar.</b> El cliente deposita al principio en su moneda (por ejemplo wBRL), la plata queda guardada, y cada vez que se aprueba una entrega el agente cotiza, convierte y le paga ese tramo a la freelancer en wARS. Si el cliente no responde en X días, el tramo se libera solo.</p>
+  </div>
+  <p>Track principal: <b>Stable Agents LatAm</b> (Ripio × Celo, US$1.500 / 500). Track secundario: <b>Open Corridors · Textile FX</b> (US$750 / 250), porque cada liberación es una operación de cambio real.</p>
+</section>
+
+<section id="mezcla">
+  <h2>Cómo mezclamos A + B</h2>
+  <div class="blend">
+    <div>
+      <div class="tag">Idea A</div>
+      <h3>Cobro cross-border sin dólar</h3>
+      <ul><li>Pago en la moneda del cliente</li><li>Mejor tipo de cambio</li><li>Conciliación automática</li></ul>
+    </div>
+    <div>
+      <div class="tag">Idea B</div>
+      <h3>Cobro por hitos con garantía</h3>
+      <ul><li>Depósito por adelantado</li><li>Liberación por hito aprobado</li><li>Auto-liberación por silencio</li></ul>
+    </div>
+    <div class="mix">
+      <div class="tag">Pactá</div>
+      <h3>Hitos + FX en cada liberación</h3>
+      <p>La garantía de B le da confianza a las dos partes y el FX de A convierte cada tramo al momento de pagar, así la freelancer cobra al tipo de cambio del día y no pierde con la inflación mientras trabaja.</p>
+    </div>
+  </div>
+  <h3>Cómo bajamos el riesgo de la idea B</h3>
+  <p>Lei marcó bien que B es la parte difícil porque pide un contrato inteligente de garantía. La propuesta es hacerlo en dos escalones:</p>
+  <ul>
+    <li><b>MVP (seguro): "bóveda del agente".</b> La plata depositada queda en la wallet del agente (la única wallet del evento), y el agente lleva la cuenta de cada acuerdo en la base de datos. Todo movimiento queda en la cadena y se ve en el recibo. Ponemos un tope por acuerdo (por ejemplo, el equivalente a US$50) para limitar el riesgo.</li>
+    <li><b>Extra (si sobra tiempo): contrato de garantía.</b> Un contrato chiquito y aburrido, basado en OpenZeppelin, donde la plata queda bloqueada por acuerdo y solo el agente puede liberarla según las reglas. Entra en la fase 5 solo si el MVP ya está funcionando con usuarios reales.</li>
+  </ul>
+  <p>Además, Pactá también acepta acuerdos <b>en la misma moneda</b> (wARS → wARS). Así podemos conseguir usuarios reales en Argentina aunque no aparezcan clientes en Brasil a tiempo.</p>
+</section>
+
+<section id="usuarios">
+  <h2>Usuarios y flujo</h2>
+  <h3>Quiénes lo usan</h3>
+  <ul>
+    <li><b>Freelancer</b> (quien cobra): por ejemplo, una diseñadora en Córdoba que trabaja para una agencia en São Paulo.</li>
+    <li><b>Cliente</b> (quien paga): deposita en su moneda y aprueba entregas.</li>
+    <li><b>El agente Pactá</b>: arma el acuerdo, guarda la plata, cotiza, convierte, paga, avisa y emite recibos.</li>
+  </ul>
+  <h3>El flujo de punta a punta</h3>
+<pre class="mermaid">
+sequenceDiagram
+  actor F as Freelancer
+  participant A as Agente Pactá
+  actor C as Cliente
+  F->>A: "Logo + manual de marca, 3 entregas, 1.500 BRL"
+  A->>A: Arma acuerdo con 3 hitos (Claude API)
+  A->>C: Link para revisar y depositar
+  C->>A: Deposita 1.500 wBRL (tx con tag)
+  A->>F: "Fondos asegurados, podés arrancar"
+  F->>A: Entrega hito 1 (link + nota)
+  A->>C: "Revisá la entrega 1, tenés 3 días"
+  C->>A: Aprueba (firma con su wallet)
+  A->>A: Cotiza wBRL→wARS y elige la mejor ruta
+  A->>F: Paga el tramo en wARS (tx con tag)
+  A->>F: Recibo con tipo de cambio y links on-chain
+  Note over A,C: Sin respuesta en 3 días: segundo aviso. Sin respuesta 3 días más: libera solo
+</pre>
+</section>
+
+<section id="requisitos">
+  <h2>Requisitos</h2>
+  <p><span class="pill p-must">MVP</span> entra sí o sí. <span class="pill p-nice">Deseable</span> entra si hay tiempo. <span class="pill p-stretch">Extra</span> solo si sobra.</p>
+  <h3>Funcionales</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>ID</th><th>Requisito</th><th>Prioridad</th></tr></thead>
+    <tbody>
+      <tr><td class="id">RF-01</td><td>La freelancer conecta su wallet de Celo (MiniPay, Valora o MetaMask) y crea un acuerdo.</td><td><span class="pill p-must">MVP</span></td></tr>
+      <tr><td class="id">RF-02</td><td>La freelancer describe el trabajo en texto libre y el agente propone los hitos, montos y plazos, que ella puede editar.</td><td><span class="pill p-must">MVP</span></td></tr>
+      <tr><td class="id">RF-03</td><td>El acuerdo define moneda del cliente (wBRL, wMXN, wARS…) y moneda de cobro (wARS por defecto).</td><td><span class="pill p-must">MVP</span></td></tr>
+      <tr><td class="id">RF-04</td><td>El cliente abre un link, ve el acuerdo y una cotización de referencia, conecta su wallet y deposita el total.</td><td><span class="pill p-must">MVP</span></td></tr>
+      <tr><td class="id">RF-05</td><td>El agente detecta el depósito en la cadena y marca el acuerdo como financiado.</td><td><span class="pill p-must">MVP</span></td></tr>
+      <tr><td class="id">RF-06</td><td>La freelancer marca un hito como entregado, con un link y una nota.</td><td><span class="pill p-must">MVP</span></td></tr>
+      <tr><td class="id">RF-07</td><td>El cliente aprueba el hito con una firma de su wallet (sin gastar gas).</td><td><span class="pill p-must">MVP</span></td></tr>
+      <tr><td class="id">RF-08</td><td>Al aprobarse, el agente cotiza, convierte si hace falta y paga el tramo a la freelancer.</td><td><span class="pill p-must">MVP</span></td></tr>
+      <tr><td class="id">RF-09</td><td>Si el cliente no responde en 3 días, el agente le manda un segundo aviso y espera 3 días más. Si sigue sin responder (6 días en total desde la entrega), libera el hito solo. Los dos plazos se pueden configurar por acuerdo.</td><td><span class="pill p-must">MVP</span></td></tr>
+      <tr><td class="id">RF-10</td><td>Cada pago genera un recibo: montos, tipo de cambio usado, comparación con la referencia y links a las transacciones.</td><td><span class="pill p-must">MVP</span></td></tr>
+      <tr><td class="id">RF-11</td><td>Avisos por WhatsApp (y mail de respaldo) en cada cambio de estado, con el link a la web para aprobar o depositar.</td><td><span class="pill p-nice">Deseable</span></td></tr>
+      <tr><td class="id">RF-12</td><td>El cliente puede "pausar" un hito si hay un problema. Para el MVP la disputa se resuelve a mano.</td><td><span class="pill p-nice">Deseable</span></td></tr>
+      <tr><td class="id">RF-13</td><td>El agente resume la entrega para el cliente ("subió 3 archivos, cumple lo pactado en el hito 1").</td><td><span class="pill p-nice">Deseable</span></td></tr>
+      <tr><td class="id">RF-14</td><td>Contrato de garantía en la cadena en lugar de la bóveda del agente.</td><td><span class="pill p-stretch">Extra</span></td></tr>
+      <tr><td class="id">RF-15</td><td>Si el cliente cancela, devolución de los hitos no entregados.</td><td><span class="pill p-stretch">Extra</span></td></tr>
+    </tbody>
+  </table></div>
+  <h3>No funcionales</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>ID</th><th>Requisito</th></tr></thead>
+    <tbody>
+      <tr><td class="id">RNF-01</td><td>Desarrollo en testnet (Celo Sepolia) hasta la fase 2, con monedas de prueba. Desde la fase 3 todo pasa a Celo mainnet (chain 42220), que es lo único que suma puntos. Cambiar de red tiene que ser una sola variable de configuración.</td></tr>
+      <tr><td class="id">RNF-02</td><td>Toda transacción, del agente y del cliente desde nuestra web, sale con el tag del equipo.</td></tr>
+      <tr><td class="id">RNF-03</td><td>Una persona que nunca usó crypto entiende la pantalla: montos en pesos y reales, nada de "gas" ni direcciones largas.</td></tr>
+      <tr><td class="id">RNF-04</td><td>La clave privada del agente vive solo en el servidor como variable secreta. Nunca en el repo ni en el navegador.</td></tr>
+      <tr><td class="id">RNF-05</td><td>Tope por acuerdo y tope diario de pagos del agente durante la hackathon.</td></tr>
+      <tr><td class="id">RNF-06</td><td>Los pagos son idempotentes: si algo se reintenta, nunca se paga dos veces el mismo hito.</td></tr>
+      <tr><td class="id">RNF-07</td><td>Repo público con README claro, porque una IA revisa el repo para el jurado.</td></tr>
+      <tr><td class="id">RNF-08</td><td>El gas se paga en stablecoin con <code>feeCurrency</code> para que el agente no dependa de tener CELO.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="reglas">
+  <h2>Reglas de la hackathon que el diseño cumple</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Regla</th><th>Cómo la cumplimos</th></tr></thead>
+    <tbody>
+      <tr><td>Solo mainnet</td><td>Arrancamos en testnet para aprender sin riesgo. Pasamos a mainnet (42220) en la fase 3, con al menos 5 días para juntar transacciones reales. El registro ERC-8004 y todo lo que se entrega va en mainnet.</td></tr>
+      <tr><td>Tag en cada transacción</td><td>Un solo "cliente de wallet" con <code>withAttribution(tag)</code> que usan todos los módulos. Prohibido mandar transacciones por otro lado.</td></tr>
+      <tr><td>Equipo y tag</td><td><mark>Crear el equipo en Loops antes de la primera transacción</mark> y usar el tag del equipo, no el <code>celo_dc3ce5f39b37</code> personal de Mavi.</td></tr>
+      <tr><td>Una sola wallet de agente</td><td>La wallet de Pactá es la bóveda y la que paga. Es la que se registra al entregar.</td></tr>
+      <tr><td>Identidad ERC-8004</td><td>Se registra en la fase 0 desde esa misma wallet, con la "agent card" publicada en la web.</td></tr>
+      <tr><td>Usuarios independientes</td><td>Wallets que no fondeamos nosotras y que ya usaban Celo antes. Las buscamos en la comunidad de Córdoba, usuarios de MiniPay y el Telegram del hack.</td></tr>
+      <tr><td>Repo público</td><td>Se crea en la fase 0 y todo el código se escribe durante la hackathon.</td></tr>
+      <tr><td>wFIAT real</td><td>wARS, wBRL y wMXN de Ripio en cada acuerdo.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="modulos">
+  <h2>Arquitectura y módulos</h2>
+  <p>Una sola app web (frontend + API) y un proceso del agente que corre cada pocos minutos. Una base de datos guarda los acuerdos y la cadena guarda la plata.</p>
+<pre class="mermaid">
+flowchart LR
+  F[Freelancer] --> W[Web Pactá]
+  C[Cliente] --> W
+  W --> API[API]
+  API --> DB[(Base de datos)]
+  API --> IA[Claude API]
+  AG[Agente: tareas programadas] --> DB
+  AG --> FX[Cotizador FX]
+  FX --> TX[Textile / DEX en Celo]
+  AG --> WAL[Wallet del agente con tag]
+  WAL --> CELO[(Celo mainnet)]
+  W -- depósito con tag --> CELO
+  AG --> N[Avisos WhatsApp / mail]
+</pre>
+  <div class="modules">
+    <div class="mod"><div class="code">M1</div><h3>Acuerdos (intake)</h3><p>Convierte el texto libre de la freelancer en un acuerdo con hitos, montos y plazos usando Claude. Valida que los montos sumen.</p><div class="who">Mavi + Leila (prompts y casos)</div></div>
+    <div class="mod"><div class="code">M2</div><h3>Web cliente y freelancer</h3><p>Crear acuerdo, link para el cliente, depositar, entregar, aprobar, ver recibos. Conexión de wallet.</p><div class="who">Flor</div></div>
+    <div class="mod"><div class="code">M3</div><h3>Bóveda</h3><p>Detecta depósitos que llegan a la wallet del agente, los asigna al acuerdo y lleva el saldo de cada uno.</p><div class="who">Mavi</div></div>
+    <div class="mod"><div class="code">M4</div><h3>Cotizador FX</h3><p>Pide precio wBRL→wARS a Textile y a un DEX de Celo, elige el mejor y lo compara con una referencia (Ripio).</p><div class="who">Mavi + Flor</div></div>
+    <div class="mod"><div class="code">M5</div><h3>Liberador</h3><p>El corazón del agente: revisa hitos aprobados o vencidos, convierte, paga una sola vez y deja todo registrado.</p><div class="who">Mavi</div></div>
+    <div class="mod"><div class="code">M6</div><h3>Recibos y conciliación</h3><p>Cruza lo que dice la base con lo que pasó en la cadena y arma el recibo de cada pago.</p><div class="who">Leila (reglas) + Flor (pantalla)</div></div>
+    <div class="mod"><div class="code">M7</div><h3>Identidad y tag</h3><p>Cliente de wallet único con el tag, registro ERC-8004 y agent card publicada.</p><div class="who">Mavi (fase 0)</div></div>
+    <div class="mod"><div class="code">M8</div><h3>Avisos</h3><p>Mensajes de WhatsApp (y mail de respaldo) en cada cambio de estado. Los avisos del día 3 y del día 6 usan plantillas aprobadas por Meta.</p><div class="who">Clau / quien quede libre</div></div>
+  </div>
+</section>
+
+<section id="tecnologias">
+  <h2>Tecnologías</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Capa</th><th>Tecnología</th><th>Por qué</th></tr></thead>
+    <tbody>
+      <tr><td>Lenguaje</td><td>TypeScript</td><td>Un solo lenguaje para web, API y agente, y es lo que usan todas las librerías de Celo.</td></tr>
+      <tr><td>Web + API</td><td>Next.js (App Router)</td><td>Frontend y backend en un mismo proyecto, fácil de subir a Vercel.</td></tr>
+      <tr><td>Estilos</td><td>Tailwind + shadcn/ui</td><td>Pantallas prolijas rápido, sin diseñar todo de cero.</td></tr>
+      <tr><td>Blockchain</td><td>viem</td><td>Leer saldos, mandar transacciones, firmar y verificar firmas en Celo.</td></tr>
+      <tr><td>Wallets en la web</td><td>wagmi (conector inyectado)</td><td>Conecta MiniPay, Valora y MetaMask. MiniPay es clave para usuarios de LatAm.</td></tr>
+      <tr><td>Tag</td><td><code>@celo/attribution-tags</code></td><td>Obligatorio, para que cada transacción sume en el leaderboard.</td></tr>
+      <tr><td>Identidad</td><td>ERC-8004 (Identity Registry de Celo)</td><td>Obligatorio, para registrar al agente.</td></tr>
+      <tr><td>Monedas</td><td>wARS, wBRL, wMXN (Ripio)</td><td>Requisito del track LatAm. Se consiguen en ramp.ripio.com.</td></tr>
+      <tr><td>FX</td><td>Textile + un DEX de Celo como respaldo</td><td>Textile suma el segundo track. La liquidez real hay que verificarla el día 1.</td></tr>
+      <tr><td>IA</td><td>Claude API</td><td>Entender el texto libre, armar hitos y resumir entregas.</td></tr>
+      <tr><td>Base de datos</td><td>Supabase (Postgres)</td><td>Gratis, con panel para ver los datos, y todas pueden mirarla sin instalar nada.</td></tr>
+      <tr><td>Tareas programadas</td><td>Vercel Cron (o Supabase cron)</td><td>Despierta al agente cada pocos minutos para detectar depósitos y liberar hitos.</td></tr>
+      <tr><td>Avisos</td><td>WhatsApp Business Cloud API (Meta) o Twilio, y Resend (mail) de respaldo</td><td>WhatsApp es lo que usa todo el mundo en LatAm. Twilio tiene un sandbox para probar desde el día 1 mientras Meta aprueba las plantillas.</td></tr>
+      <tr><td>Nodo RPC</td><td>Forno de Celo o Chainstack (3 meses gratis)</td><td>Para hablar con mainnet de forma estable.</td></tr>
+      <tr><td>Extra</td><td>Solidity + Foundry + OpenZeppelin</td><td>Solo si hacemos el contrato de garantía.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="datos">
+  <h2>Datos y estados</h2>
+  <h3>Entidades</h3>
+  <ul>
+    <li><b>Usuaria</b>: wallet, nombre, número de WhatsApp (con su permiso para recibir avisos) y mail de respaldo.</li>
+    <li><b>Acuerdo</b>: freelancer, cliente, descripción, moneda del cliente, moneda de cobro, total, estado, link público.</li>
+    <li><b>Hito</b>: acuerdo, orden, título, monto, plazo de revisión en días, estado, link de entrega, fecha de entrega.</li>
+    <li><b>Movimiento</b>: hito o acuerdo, tipo (depósito, conversión, pago, devolución), monedas, montos, tipo de cambio, hash de la transacción, estado.</li>
+    <li><b>Cotización</b>: par, ruta, precio, referencia, hora.</li>
+  </ul>
+  <h3>Vida de un hito</h3>
+  <div class="states" aria-label="Estados del hito">
+    <span class="s">pendiente</span><span class="a">→</span>
+    <span class="s">financiado</span><span class="a">→</span>
+    <span class="s">entregado</span><span class="a">→</span>
+    <span class="s">recordado (día 3)</span><span class="a">→</span>
+    <span class="s">aprobado / vencido (día 6)</span><span class="a">→</span>
+    <span class="s">convirtiendo</span><span class="a">→</span>
+    <span class="s">pagado</span>
+  </div>
+  <p style="margin-top:12px">Desde "entregado" el cliente puede pasarlo a <b>pausado</b>, y eso frena la auto-liberación hasta que el equipo lo resuelva a mano. El cliente puede aprobar en cualquier momento, también después del segundo aviso. Para la demo, los dos plazos se pueden poner en minutos.</p>
+</section>
+
+<section id="fases">
+  <h2>Fases de desarrollo</h2>
+  <p>Quedan 14 días. Cada fase termina con algo que funciona en mainnet, así si el tiempo no alcanza igual tenemos algo para entregar.</p>
+  <div class="phases">
+    <div class="phase">
+      <div class="when"><b>Fase 0</b>lun 26 – mar 27 oct</div>
+      <div><h3>Preparación</h3>
+        <ul>
+          <li>Crear el equipo en Loops y anotar el tag del equipo.</li>
+          <li>Crear una wallet de prueba para testnet y pedir CELO de prueba en el faucet.</li>
+          <li>Repo público, proyecto Next.js vacío subido a Vercel, base en Supabase.</li>
+          <li>Cliente de wallet con tag y una primera transacción en testnet.</li>
+          <li>Monedas de prueba: ver si hay wARS/wBRL en testnet y, si no, crear dos tokens de prueba ("tARS" y "tBRL") para simular.</li>
+          <li><b>Investigación clave:</b> ¿hay liquidez wBRL→wARS en Textile o en algún DEX? ¿Cómo se accede a Textile?</li>
+        </ul>
+        <div class="done">Listo cuando: mandamos una transacción en testnet desde nuestro código y sabemos qué ruta de FX vamos a usar en mainnet.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="when"><b>Fase 1</b>mié 28 – sáb 31 oct</div>
+      <div><h3>Núcleo: hitos en la misma moneda</h3>
+        <ul>
+          <li>Todo en testnet. Crear acuerdo a mano (sin IA todavía), link para el cliente, depósito en la moneda de prueba.</li>
+          <li>Bóveda: detectar depósitos y marcar financiado.</li>
+          <li>Entregar, aprobar con firma, liberar y pagar.</li>
+          <li>Office Hours jueves 29 a las 09:00 ART para validar la idea.</li>
+          <li>Clau empieza a buscar 5 a 10 parejas freelancer y cliente reales.</li>
+        </ul>
+        <div class="done">Listo cuando: un acuerdo en la misma moneda funciona de punta a punta en testnet.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="when"><b>Fase 2</b>dom 1 – mar 3 nov</div>
+      <div><h3>Cross-border: FX en cada liberación</h3>
+        <ul>
+          <li>Depósitos en wBRL y wMXN.</li>
+          <li>Cotizador: Textile, DEX de respaldo y referencia.</li>
+          <li>Conversión al liberar y recibo con el tipo de cambio (en testnet la conversión puede ser simulada si no hay DEX).</li>
+          <li>Preparar el paso a mainnet: confirmar el equipo en Loops y su tag.</li>
+        </ul>
+        <div class="done">Listo cuando: el flujo cross-border funciona en testnet y está todo listo para cambiar de red.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="when"><b>Fase 3</b>mié 4 – jue 5 nov</div>
+      <div><h3>Paso a mainnet y el agente se vuelve agente</h3>
+        <ul>
+          <li><mark>Paso a mainnet</mark>: crear la wallet definitiva del agente, fondearla con un poco de CELO y wARS, y mandar la primera transacción con el tag del equipo.</li>
+          <li>Registro ERC-8004 con la agent card desde esa wallet.</li>
+          <li>Primer acuerdo real con wARS/wBRL de Ripio y un usuario independiente.</li>
+          <li>Intake con Claude: del texto libre a hitos.</li>
+          <li>Segundo aviso al día 3 y auto-liberación al día 6.</li>
+          <li>Avisos por WhatsApp (plantillas ya aprobadas) y mail de respaldo.</li>
+          <li>Office Hours jueves 5 para feedback.</li>
+        </ul>
+        <div class="done">Listo cuando: el flujo completo corre sin que nadie del equipo toque nada.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="when"><b>Fase 4</b>vie 6 – sáb 7 nov</div>
+      <div><h3>Usuarios reales y pulido</h3>
+        <ul>
+          <li>Todas las parejas reales hacen al menos un acuerdo.</li>
+          <li>Arreglar lo que rompan, pulir textos y pantallas en celular.</li>
+          <li>README, diagrama, video demo de 2 a 3 minutos.</li>
+          <li>Si todo está verde: contrato de garantía (extra).</li>
+        </ul>
+        <div class="done">Listo cuando: hay transacciones de usuarios independientes en el leaderboard.</div>
+      </div>
+    </div>
+    <div class="phase final">
+      <div class="when"><b>Fase 5</b>dom 8 nov</div>
+      <div><h3>Entrega</h3>
+        <ul>
+          <li>Congelar el código, revisar el checklist de entrega y enviar en los dos tracks.</li>
+          <li>Plan B: si algo se rompe, entregamos la última versión que funcionaba.</li>
+        </ul>
+        <div class="done">Cierre oficial: lun 9 nov 06:00 ART. No lo dejemos para la madrugada.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="equipo">
+  <h2>Equipo (propuesta)</h2>
+  <div class="team">
+    <div><b>Mavi</b><span class="role">Agente y blockchain</span>Wallet, tag, ERC-8004, bóveda, liberador y FX, con Claude al lado explicando cada paso.</div>
+    <div><b>Flor</b><span class="role">Frontend</span>Pantallas en Next.js, conexión de wallet, recibos. Ideal para meterse a codear.</div>
+    <div><b>Leila</b><span class="role">Producto y QA</span>Specs, casos de prueba, reglas de conciliación, prompts del intake, README.</div>
+    <div><b>Clau</b><span class="role">Usuarios y pitch</span>Conseguir usuarios reales, onboarding, video y presentación. A confirmar según lo que le guste.</div>
+  </div>
+</section>
+
+<section id="fuera">
+  <h2>Fuera de alcance</h2>
+  <ul>
+    <li>Arbitraje automático de disputas. En el MVP se pausa y se resuelve a mano.</li>
+    <li>Facturación fiscal (AFIP) o integración con bancos.</li>
+    <li>App móvil nativa. La web tiene que andar bien en el celular y dentro de MiniPay.</li>
+    <li>Monedas fuera de las wFIAT de Ripio.</li>
+    <li>Montos grandes. Hay tope por acuerdo mientras dure la hackathon.</li>
+  </ul>
+</section>
+
+<section id="riesgos">
+  <h2>Riesgos y cómo los cubrimos</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Riesgo</th><th>Qué hacemos</th></tr></thead>
+    <tbody>
+      <tr><td>No hay liquidez directa wBRL→wARS</td><td>Se verifica en la fase 0. Si no hay par directo, la ruta pasa por un intermedio dentro del swap y para la usuaria igual es "real a peso". Si no hay ninguna ruta, el MVP queda en misma moneda y FX pasa a extra.</td></tr>
+      <tr><td>No sabemos cómo se integra Textile</td><td>Preguntar en el Telegram del hack y en Office Hours el jueves 29.</td></tr>
+      <tr><td>Pocos usuarios independientes</td><td>Clau arranca en la fase 1, no al final. Los acuerdos wARS → wARS hacen más fácil sumar gente de Argentina.</td></tr>
+      <tr><td>Transacciones sin tag (no suman y no hay vuelta atrás)</td><td>Un único cliente de wallet con tag. Revisión de cada transacción nueva en el explorador.</td></tr>
+      <tr><td>Se filtra la clave del agente</td><td>Solo como variable secreta en Vercel, topes por acuerdo y por día, y saldo bajo en la wallet.</td></tr>
+      <tr><td>Equipo sin experiencia en web3</td><td>Fases cortas que terminan funcionando, explicaciones APB de cada paso, y el contrato queda como extra.</td></tr>
+      <tr><td>Meta tarda en aprobar la cuenta o las plantillas de WhatsApp</td><td>Pedir la cuenta de WhatsApp Business y las plantillas en la fase 0. Mientras tanto usamos el sandbox de Twilio, y el mail queda siempre de respaldo. Nada de librerías no oficiales, porque Meta bloquea el número.</td></tr>
+      <tr><td>Arrancar en testnet deja poco tiempo en mainnet</td><td>El paso a mainnet tiene fecha fija (mié 4 nov) y no se mueve. Si la fase 2 se atrasa, pasamos a mainnet igual con lo que funcione.</td></tr>
+      <tr><td>Que nos coma el tiempo</td><td>Cada fase entrega algo usable. Si una se atrasa, se recorta la siguiente, nunca la entrega.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout risk"><b>Importante antes de mandar cualquier transacción:</b> confirmar que el equipo ya existe en Loops. Si Mavi manda algo con su tag personal y después se une al equipo, eso no suma para el equipo.</div>
+</section>
+
+<section id="decisiones">
+  <h2>Decisiones abiertas</h2>
+  <ol class="q">
+    <li><b>¿Bóveda del agente para el MVP y contrato como extra?</b> Es lo que recomiendo para no arriesgar la entrega.</li>
+    <li><b>¿Qué le gusta hacer a Clau?</b> Lo puse en usuarios y pitch, pero se cambia sin problema.</li>
+    <li><b>¿Ya crearon el equipo en Loops?</b> Es lo primero de todo.</li>
+    <li><b>¿Les gusta el nombre "Pactá"?</b> Es provisorio.</li>
+    <li><b>¿Conocen freelancers y clientes reales</b> que ya usen Celo o MiniPay, sobre todo en Brasil o México?</li>
+  </ol>
+</section>
+</main>
+</div>

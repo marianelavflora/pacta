@@ -11,7 +11,7 @@ Es nuestro proyecto para la hackathon **Agents on Open Rails** (Loops House × C
 - Track principal: **Stable Agents: LatAm** (Ripio × Celo).
 - Track secundario: **Open Corridors: Textile FX**.
 - Entrega: **lunes 9 nov 2026, 06:00 ART** (09:00 GMT). Objetivo real: domingo 8 nov.
-- Plan completo: [`docs/PLAN.md`](docs/PLAN.md).
+- Plan completo: [`docs/PLAN.md`](docs/PLAN.md). Índice de toda la documentación (hackathon, logo, copias de las páginas): [`docs/README.md`](docs/README.md).
 - Tickets: issues `PAC-01` a `PAC-54` (el número del issue es el mismo que el del ticket).
 
 ## Equipo
