@@ -29,7 +29,7 @@ Si una persona del equipo te pide ayuda con un ticket, explicá lo que hacés en
 
 1. **Tag de atribución en toda transacción.** Toda transacción sale con el tag del equipo. Si no lo tiene, no suma y no hay forma de agregarlo después. Usá **siempre** el cliente de wallet único de `lib/` (ticket PAC-05). Nunca crees otro cliente de viem que mande transacciones, y nunca pongas `data: 'celo_...'` a mano.
 2. **Solo cuenta mainnet (chain 42220).** Desarrollamos en testnet (Celo Sepolia) hasta el **miércoles 4 nov**, cuando pasamos a mainnet. La red se cambia con **una sola variable de entorno**; nunca hardcodees la red ni direcciones de una red en particular.
-3. **Una sola wallet de agente** para todo el evento. Es la bóveda y la que paga. No crees otras wallets de agente.
+3. **Una sola wallet de agente** para todo el evento: la que se carga en el submit de Loops. El puntaje queda atado a esa dirección. Es la bóveda y la que paga, y sirve igual en testnet y en mainnet (la misma dirección anda en las dos redes). No crees otras wallets de agente.
 4. **Identidad ERC-8004** registrada desde esa misma wallet antes de la entrega (PAC-45). La wallet que registra es la dueña del `agentId`.
 5. **Equipo y tag.** Antes de la primera transacción en mainnet hay que confirmar el equipo en Loops y usar **el tag del equipo**, no el personal de Mavi.
 6. **Repo público** y todo el código escrito durante la hackathon.
@@ -62,7 +62,7 @@ Si una persona del equipo te pide ayuda con un ticket, explicá lo que hacés en
 
 Tag de atribución actual: **`celo_dc3ce5f39b37`** (el personal de Mavi). Va en la variable `NEXT_PUBLIC_ATTRIBUTION_TAG`, nunca escrito en el código. Si antes de mainnet nos anotamos como equipo en Loops, se reemplaza por el tag del equipo (regla 5) y se cambia solo esa variable.
 
-Wallet del agente en **testnet** (Celo Sepolia, PAC-06): `0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`. La de mainnet se crea el 4 nov (PAC-43). La clave privada vive solo en `.env.local` y en Vercel como `AGENT_PRIVATE_KEY`.
+Wallet del agente: **pendiente**. La primera (`0xab569A…8E73`) quedó descartada porque su clave se vio en una captura. Hay que crear una nueva que nunca se haya mostrado, y esa es la que va al submit de Loops y se usa en testnet y en mainnet. La clave privada vive solo en `.env.local` y en Vercel como `AGENT_PRIVATE_KEY`. Nunca va en capturas, chats ni el repo.
 
 Contratos wFIAT en Celo mainnet: wARS `0x0dc4f92879b7670e5f4e4e6e3c801d229129d90d`, wBRL `0xd76f5faf6888e24d9f04bf92a0c8b921fe4390e0`, wMXN `0x337e7456b420bd3481e7fa61fa9850343d610d34`.
 
@@ -104,7 +104,7 @@ Leé la que corresponda antes de tocar wallet, tag, identidad o fondos.
 - **Reputación:** usuarios que no son dueños del agente pueden dejarle feedback con `giveFeedback`. Suma como prueba de uso real.
 
 ### Pasar fondos a Celo (bridges): [docs de Celo](https://docs.celo.org/build/tools/bridges/bridges)
-- **Para qué lo necesitamos:** fondear la wallet de mainnet el 4 nov (PAC-43) y ayudar a usuarios que tienen plata en otra red.
+- **Para qué lo necesitamos:** fondear la wallet del agente en mainnet el 4 nov (PAC-43) y ayudar a usuarios que tienen plata en otra red.
 - **Opciones:** Superbridge (también anda en testnet), Layerswap (también desde exchanges centralizados), Squid, Jumper, Hyperlane, Portal (Wormhole), Transporter (Chainlink CCIP) y SmolRefuel (para cargar un poco de gas).
 - **Cuidado:** la página no recomienda ninguno. Antes de mover plata, leer los riesgos de cada uno, probar con un monto chico y que Mavi apruebe.
 
@@ -163,9 +163,9 @@ Mini standup por WhatsApp a la mañana (opcional): qué hice, qué hago hoy, en 
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
+- 2026-10-26 · La wallet del agente es la del submit de Loops y se usa en testnet y mainnet (ya no se crea otra el 4 nov). La primera, `0xab569A…8E73`, se descarta porque su clave se vio en una captura.
 - 2026-10-26 · Tag de atribución `celo_dc3ce5f39b37` (personal de Mavi) en `NEXT_PUBLIC_ATTRIBUTION_TAG`. Cambia si hay equipo en Loops.
 - 2026-10-26 · Sumadas referencias de tag, ERC-8004 y bridges. El Identity Registry de testnet es distinto al de mainnet.
-- 2026-10-26 · Wallet de testnet del agente creada: `0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`.
 - 2026-10-26 · Tickets de Flor, Leila y Clau reescritos en formato APB (paso a paso, archivos, cómo probar, palabras nuevas). Mapa del código y guía `docs/WORKFLOW.md`.
 - 2026-10-26 · README principal en inglés (lo lee el jurado); PLAN.md y AGENTS.md siguen en castellano. Las secciones *pending* del README las completan PAC-04, PAC-45, PAC-50 y PAC-52.
 - 2026-10-26 · Usuarios de GitHub: Mavi `marianelavflora`, Leila `leispini`, Clau `ClaudiaRivero863`.
