@@ -134,7 +134,8 @@ Dónde va cada cosa. Los tickets usan estos nombres; si cambiás uno, actualizá
 | `lib/ui/` | Textos de estados y errores amigables |
 | `agent/` | Bóveda, liberador, cotizador y recordatorios |
 | `supabase/migrations/` | SQL de las tablas: `users`, `agreements`, `milestones`, `movements`, `quotes` |
-| `tests/`, `scripts/` | Tests (Vitest) y scripts sueltos |
+| `tests/` | Tests (Vitest). `tests/README.md` describe cada uno (PAC-60) |
+| `scripts/` | Scripts sueltos |
 | `public/` | Logos (`public/brand/`) y `agent-card.json` |
 
 Variables de entorno clave: `NEXT_PUBLIC_CHAIN` (`celo-sepolia` o `celo`), `NEXT_PUBLIC_ATTRIBUTION_TAG`, `AGENT_PRIVATE_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `TWILIO_*`, `RESEND_API_KEY`, `CRON_SECRET`, `TIME_UNIT` (`days` o `minutes` para probar plazos rápido). Todas listadas en `.env.example`, sin valores.
@@ -160,6 +161,7 @@ Mini standup por WhatsApp a la mañana (opcional): qué hice, qué hago hoy, en 
 - No toques archivos de otro ticket sin avisar.
 - Si tu cambio modifica una decisión, una dirección de contrato, una variable de entorno o el flujo, **actualizá este archivo** (sección "Estado y decisiones") y `docs/PLAN.md` en el mismo PR. Estos archivos tienen que reflejar siempre cómo está el proyecto hoy.
 - Escribí la **descripción del PR en formato APB**, con la plantilla: qué cambia en palabras simples, cómo probarlo paso a paso y las palabras nuevas explicadas. Tiene que entenderla alguien del equipo que no vio el código.
+- **Tests (QA):** después de cada implementación, revisá la carpeta `tests/` y agregá o editá los tests de lo que cambiaste. Anotá cada test nuevo en `tests/README.md` (qué prueba y de qué ticket viene).
 - Antes de abrir el PR, corré `npm run lint`, `npm test` y `npm run build`, y contá en el PR si algo falló.
 - El bloque `nextjs-agent-rules` del final de este archivo lo escribe `next dev` solo. No lo borres: si lo sacás, vuelve a aparecer.
 
@@ -186,6 +188,7 @@ El agente lo calcula así (con `gh`, la línea de comandos de GitHub; si no la t
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
 - 2026-10-26 · Proyecto base (PAC-01): Next.js 16, TypeScript strict con target ES2020 (para usar `bigint`), Tailwind 4, ESLint y Vitest. Pide Node 22.12 o más, porque Vitest 5 lo necesita.
+- 2026-10-26 · QA: después de cada implementación se revisan los tests de `tests/` y se documentan en `tests/README.md` (PAC-60).
 - 2026-10-26 · Frase de arranque para los agentes y regla para elegir el próximo ticket. Las descripciones de PR van en formato APB (plantilla nueva).
 - 2026-10-26 · No se protege `main`: queda como acuerdo del equipo, no como regla de GitHub.
 - 2026-10-26 · Wallet del agente confirmada por Mavi: `0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`. Es la del submit de Loops, se usa en testnet y en mainnet, y no se crea otra el 4 nov.

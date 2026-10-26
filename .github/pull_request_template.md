@@ -18,6 +18,7 @@ Closes #
 ## Checklist
 - [ ] Cumple lo de "Está listo cuando" del issue.
 - [ ] La descripción la entiende alguien que no vio el código.
+- [ ] Agregué o edité los tests de lo que cambié y los anoté en `tests/README.md`.
 - [ ] `npm run lint`, `npm test` y `npm run build` pasan.
 - [ ] No hay claves ni secretos en el código.
 - [ ] Toda transacción usa el cliente de wallet con tag (si aplica).
