@@ -30,7 +30,7 @@ Si una persona del equipo te pide ayuda con un ticket, explicá lo que hacés en
 1. **Tag de atribución en toda transacción.** Toda transacción sale con el tag del equipo. Si no lo tiene, no suma y no hay forma de agregarlo después. Usá **siempre** el cliente de wallet único de `lib/` (ticket PAC-05). Nunca crees otro cliente de viem que mande transacciones, y nunca pongas `data: 'celo_...'` a mano.
 2. **Solo cuenta mainnet (chain 42220).** Desarrollamos en testnet (Celo Sepolia) hasta el **miércoles 4 nov**, cuando pasamos a mainnet. La red se cambia con **una sola variable de entorno**; nunca hardcodees la red ni direcciones de una red en particular.
 3. **Una sola wallet de agente** para todo el evento. Es la bóveda y la que paga. No crees otras wallets de agente.
-4. **Identidad ERC-8004** registrada desde esa misma wallet antes de la entrega (PAC-45).
+4. **Identidad ERC-8004** registrada desde esa misma wallet antes de la entrega (PAC-45). La wallet que registra es la dueña del `agentId`.
 5. **Equipo y tag.** Antes de la primera transacción en mainnet hay que confirmar el equipo en Loops y usar **el tag del equipo**, no el personal de Mavi.
 6. **Repo público** y todo el código escrito durante la hackathon.
 7. **Usuarios independientes**: wallets que no creamos ni fondeamos nosotras y que ya usaban Celo antes. No inventes actividad ni fondees wallets para inflar números.
@@ -52,7 +52,7 @@ Si una persona del equipo te pide ayuda con un ticket, explicá lo que hacés en
 | Estilos | Tailwind + shadcn/ui |
 | Blockchain | viem; wagmi en el navegador (MiniPay, Valora, MetaMask) |
 | Tag | `@celo/attribution-tags` |
-| Identidad | ERC-8004, Identity Registry de Celo `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
+| Identidad | ERC-8004 (direcciones por red en *Referencias técnicas*) |
 | Monedas | wARS, wBRL, wMXN de Ripio (18 decimales). En testnet, tARS y tBRL de prueba si no existen |
 | FX | Textile + un DEX de Celo de respaldo (ver `docs/fx.md` cuando exista) |
 | IA | Claude API (intake de hitos y resúmenes) |
@@ -71,6 +71,40 @@ Contratos wFIAT en Celo mainnet: wARS `0x0dc4f92879b7670e5f4e4e6e3c801d229129d90
 - Estados del hito: `pending → funded → delivered → reminded → approved | expired → converting → paid`, con `paused` desde `delivered`. Mantené estos nombres en código y base.
 - Toda la lógica de cadena va en `lib/chain/`; la del agente (bóveda, liberador, cotizador) en `agent/`; la web en `app/`.
 - Cambios chicos y enfocados en el ticket. Si ves algo para mejorar fuera del ticket, anotalo en un issue nuevo en vez de mezclarlo.
+
+## Referencias técnicas
+
+Leé la que corresponda antes de tocar wallet, tag, identidad o fondos.
+
+### Tag de atribución: [BUILDERS.md de `celo-org/attribution-tags`](https://github.com/celo-org/attribution-tags/blob/main/BUILDERS.md)
+- **Paquete:** `@celo/attribution-tags` (usa ERC-8021). El tag se pega al final de los datos de la transacción y el contrato lo ignora.
+- **En el servidor:** el cliente del agente se crea con `createWalletClient(...).extend(withAttribution(TAG))`, y así sale taggeado todo `sendTransaction` y `writeContract` (PAC-05).
+- **En el navegador (wagmi):** a `useWriteContract` se le pasa `dataSuffix: toDataSuffix(TAG)` en cada `writeContract`, o se extiende el cliente de `useWalletClient()` (PAC-20, el depósito del cliente).
+- **Verificar:** `verifyTx({ client, hash })` devuelve `{ codes }`, o `null` si la transacción no tiene tag. Úsenlo en las pruebas de PAC-05 y PAC-28.
+- **Errores típicos:**
+  - Poner `data: 'celo_...'` en vez de `toDataSuffix(...)`.
+  - Usar `withAttribution` y `dataSuffix` a la vez.
+  - Llamar a `codeFromHostname(window.location...)` arriba de todo en un archivo `"use client"`: se rompe en el servidor.
+  - Usar `sendCalls` o batch, que no lo cubre `withAttribution`.
+  - Poner mayúsculas o espacios en el código.
+- **Qué código se acredita:** si el programa asigna un código, solo ese suma. Se pueden mandar varios: `toDataSuffix(['propio', 'asignado'])`. Antes de mainnet, confirmar el código del equipo en Loops (regla 5).
+
+### Identidad del agente, el "DNI" con ERC-8004: [docs de Celo](https://docs.celo.org/build-on-celo/build-with-ai/8004)
+
+| Red | Identity Registry | Reputation Registry |
+|---|---|---|
+| Celo mainnet (42220) | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
+| Celo Sepolia (testnet) | `0x8004A818BFB912233c491871b3d84c89A494BD9e` | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
+
+- **Registrar:** `register(agentURI)` mintea un NFT a la wallet que llama, que pasa a ser la dueña de la identidad. El `agentId` se lee del evento `Registered` del recibo, no de una simulación.
+- **Agent card (PAC-44):** es el JSON público al que apunta `agentURI`. Tiene `type`, `name`, `description`, `image`, `services` (por ejemplo `{ name: "web", endpoint }`), `active`, `x402Support`, `supportedTrust` y `registrations`.
+- **Orden:** 1) publicar la card sin `registrations`; 2) llamar a `register`; 3) agregar `{ agentId, agentRegistry: "eip155:42220:<registry>" }` a la card; 4) llamar a `setAgentURI(agentId, uri)` (PAC-45).
+- **Reputación:** usuarios que no son dueños del agente pueden dejarle feedback con `giveFeedback`. Suma como prueba de uso real.
+
+### Pasar fondos a Celo (bridges): [docs de Celo](https://docs.celo.org/build/tools/bridges/bridges)
+- **Para qué lo necesitamos:** fondear la wallet de mainnet el 4 nov (PAC-43) y ayudar a usuarios que tienen plata en otra red.
+- **Opciones:** Superbridge (también anda en testnet), Layerswap (también desde exchanges centralizados), Squid, Jumper, Hyperlane, Portal (Wormhole), Transporter (Chainlink CCIP) y SmolRefuel (para cargar un poco de gas).
+- **Cuidado:** la página no recomienda ninguno. Antes de mover plata, leer los riesgos de cada uno, probar con un monto chico y que Mavi apruebe.
 
 ## Mapa del código
 
@@ -127,6 +161,7 @@ Mini standup por WhatsApp a la mañana (opcional): qué hice, qué hago hoy, en 
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
+- 2026-10-26 · Sumadas referencias de tag, ERC-8004 y bridges. El Identity Registry de testnet es distinto al de mainnet.
 - 2026-10-26 · Wallet de testnet del agente creada: `0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`.
 - 2026-10-26 · Tickets de Flor, Leila y Clau reescritos en formato APB (paso a paso, archivos, cómo probar, palabras nuevas). Mapa del código y guía `docs/WORKFLOW.md`.
 - 2026-10-26 · README principal en inglés (lo lee el jurado); PLAN.md y AGENTS.md siguen en castellano. Las secciones *pending* del README las completan PAC-04, PAC-45, PAC-50 y PAC-52.
