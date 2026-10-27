@@ -1,0 +1,3 @@
+# Claves y secretos locales: nunca al repo
+.env.local
+.env*.local
