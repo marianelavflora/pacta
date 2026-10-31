@@ -135,3 +135,8 @@ describe("lib/chain/chains", () => {
     expect(txUrl(hash, "celo-sepolia")).toBe(`https://celo-sepolia.blockscout.com/tx/${hash}`);
   });
 });
+
+// Se completa cuando exista `lib/chain/tokens.ts`.
+describe("lib/chain/tokens", () => {
+  it.todo("tokens.ts devuelve las direcciones de la red elegida");
+});
