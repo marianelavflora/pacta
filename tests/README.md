@@ -25,7 +25,7 @@ Las carpetas siguen el **Mapa del código** de `AGENTS.md`:
 | Carpeta | Qué prueba |
 |---|---|
 | `tests/api/` | Rutas de `app/api/` |
-| `tests/agent/` | Bóveda, liberador, cotizador y recordatorios (`agent/`) |
+| `tests/agent/` | Bóveda (`vault.test.ts`: depósito completo, en partes, repetido, remitente, token, tx fallida, sin tag), liberador, cotizador y recordatorios (`agent/`) |
 | `tests/chain/` | Wallet, tag y tokens (`lib/chain/`) |
 | `tests/fx/` | Precio de referencia y comparación (`lib/fx/`) |
 | `tests/notify/` | Avisos por WhatsApp y mail (`lib/notify/`) |
