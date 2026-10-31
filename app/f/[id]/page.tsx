@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { PackageCheck } from "lucide-react";
 import { IdBadge } from "@/components/IdBadge";
 import { EmptyState } from "@/components/EmptyState";
@@ -40,6 +41,8 @@ export default function FreelancerAgreementPage({ params }: PageProps<"/f/[id]">
 }
 
 async function Milestones({ id }: { id: Promise<string> }) {
+  // Datos en vivo: no se leen la base ni se arma la página en el build.
+  await connection();
   const agreement = await getAgreementByPublicId(getDb(), await id);
   if (!agreement) notFound();
 
