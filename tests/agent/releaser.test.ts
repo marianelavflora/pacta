@@ -94,6 +94,7 @@ class FakeQuery {
 let db: FakeDb;
 let chain: {
   balanceOf: ReturnType<typeof vi.fn>;
+  simulateTransfer: ReturnType<typeof vi.fn>;
   transfer: ReturnType<typeof vi.fn>;
   waitForReceipt: ReturnType<typeof vi.fn>;
   getReceipt: ReturnType<typeof vi.fn>;
@@ -116,6 +117,7 @@ function setup(overrides: { status?: string; clientCurrency?: string; wallet?: s
   });
   chain = {
     balanceOf: vi.fn(async () => BigInt(1000) * E18),
+    simulateTransfer: vi.fn(async () => undefined),
     transfer: vi.fn(async () => HASH),
     waitForReceipt: vi.fn(async () => ({ status: "success" as const })),
     getReceipt: vi.fn(async () => null),
@@ -176,12 +178,30 @@ describe("liberador: pagar un hito aprobado", () => {
     expect(db.tables.movements.filter((m) => m.status === "confirmed")).toHaveLength(1);
   });
 
-  it("si el envío falla, no queda plata en camino y el hito vuelve a approved", async () => {
-    chain.transfer.mockRejectedValueOnce(new Error("insufficient funds for gas"));
+  it("si la simulacion revierte (seguro que no salio), no queda nada a medias y el hito sigue approved", async () => {
+    chain.simulateTransfer.mockRejectedValueOnce(new Error("execution reverted"));
     const result = await releaseMilestone(deps(), "m1");
     expect(result).toMatchObject({ kind: "tx_failed" });
-    expect(db.tables.movements[0].status).toBe("failed");
+    expect(chain.transfer).not.toHaveBeenCalled();
+    expect(db.tables.movements).toHaveLength(0);
     expect(milestone().status).toBe("approved");
+  });
+
+  it("si el envio falla SIN hash (ambiguo), queda pending/converting para revision manual y no se reintenta", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    chain.transfer.mockRejectedValueOnce(new Error("timeout de RPC"));
+    const result = await releaseMilestone(deps(), "m1");
+    expect(result.kind).toBe("needs_review");
+    expect(db.tables.movements[0]).toMatchObject({ status: "pending", tx_hash: null });
+    expect(milestone().status).toBe("converting");
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("REVISION MANUAL"));
+
+    // Las corridas siguientes (y el barrido del cron) no reenvian.
+    expect((await releaseMilestone(deps(), "m1")).kind).toBe("needs_review");
+    await releaseApproved(deps());
+    expect(chain.transfer).toHaveBeenCalledTimes(1);
+    expect(db.tables.movements).toHaveLength(1);
+    log.mockRestore();
   });
 
   it("si el recibo tarda, queda pendiente y la próxima corrida reconcilia sin reenviar", async () => {
@@ -197,6 +217,7 @@ describe("liberador: pagar un hito aprobado", () => {
   });
 
   it("converting sin tx_hash no reenvía (no sabemos si salió)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
     setup({ status: "converting" });
     db.tables.movements.push({
       id: "mv0",
@@ -206,7 +227,7 @@ describe("liberador: pagar un hito aprobado", () => {
       tx_hash: null,
       amount_out: HUNDRED.toString(),
     });
-    expect((await releaseMilestone(deps(), "m1")).kind).toBe("in_progress");
+    expect((await releaseMilestone(deps(), "m1")).kind).toBe("needs_review");
     expect(chain.transfer).not.toHaveBeenCalled();
   });
 

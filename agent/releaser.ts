@@ -15,6 +15,11 @@ import type { TokenSymbol } from "@/lib/chain/tokens";
 
 export type ReleaserChain = {
   balanceOf(token: Address, owner: Address): Promise<bigint>;
+  /**
+   * Simula el `transfer` SIN enviarlo. Tira error si revertiria. Se llama antes de guardar
+   * nada: si falla aca sabemos con seguridad que no salio plata.
+   */
+  simulateTransfer(token: Address, to: Address, amount: bigint): Promise<void>;
   /** Manda un `transfer` ERC-20 desde la wallet del agente y devuelve el hash. */
   transfer(token: Address, to: Address, amount: bigint): Promise<Hash>;
   /** Espera el recibo. Si no llega a tiempo, tira error (el pago queda pendiente de reconciliar). */
@@ -42,7 +47,8 @@ export type ReleaseResult =
   | { kind: "no_freelancer_wallet" }
   | { kind: "over_cap" }
   | { kind: "insufficient_balance" }
-  | { kind: "tx_failed"; reason: string }; // el hito vuelve a `approved` y se puede reintentar
+  | { kind: "tx_failed"; reason: string } // seguro que NO salio plata (simulacion o recibo revertido): reintentable
+  | { kind: "needs_review"; reason: string }; // puede que la tx haya salido: NO se reintenta solo, lo mira una persona
 
 type Row = Record<string, unknown>;
 const UNIQUE_VIOLATION = "23505";
@@ -99,6 +105,14 @@ export async function releaseMilestone(deps: ReleaserDeps, milestoneId: string):
   const token = deps.tokenAddress(currency);
   if ((await chain.balanceOf(token, deps.agentAddress)) < amount) return { kind: "insufficient_balance" };
 
+  // 0) Simular el transfer antes de tocar nada. Si revierte, es seguro que no salio plata:
+  //    no queda ningun estado a medias y el hito sigue `approved`.
+  try {
+    await chain.simulateTransfer(token, wallet as Address, amount);
+  } catch (error) {
+    return { kind: "tx_failed", reason: error instanceof Error ? error.message : "la simulacion fallo" };
+  }
+
   // 1) Primero el movimiento `pending`: el índice único frena a la segunda corrida.
   const inserted = await db
     .from("movements")
@@ -138,11 +152,22 @@ export async function releaseMilestone(deps: ReleaserDeps, milestoneId: string):
   try {
     txHash = hashOf(await chain.transfer(token, wallet as Address, amount));
   } catch (error) {
-    await failAndReopen(db, movementId, milestoneId);
-    return { kind: "tx_failed", reason: error instanceof Error ? error.message : "error al enviar" };
+    // Error SIN hash (timeout de RPC, error ambiguo): no sabemos si la tx salio. NO se marca
+    // `failed` ni se reabre el hito: queda `pending` + `converting` para revision manual y no
+    // hay reintento automatico (reconcile no reenvia sin hash).
+    const reason = error instanceof Error ? error.message : "error al enviar";
+    console.error(
+      `[releaser] NECESITA REVISION MANUAL: milestone ${milestoneId}, movement ${movementId}. El envio fallo sin hash (${reason}). Revisa la wallet del agente antes de tocar nada.`,
+    );
+    return { kind: "needs_review", reason: "El envio fallo sin hash: revisar a mano" };
   }
   const saved = await db.from("movements").update({ tx_hash: txHash }).eq("id", movementId);
-  if (saved.error) fail("guardar el hash del pago", saved.error);
+  if (saved.error) {
+    console.error(
+      `[releaser] NECESITA REVISION MANUAL: la tx ${txHash} salio pero no se pudo guardar el hash (milestone ${milestoneId}, movement ${movementId}).`,
+    );
+    return { kind: "needs_review", reason: "La tx salio pero no se guardo el hash: revisar a mano" };
+  }
 
   // 4) Esperar el recibo. Si tarda de más queda pendiente y la próxima corrida reconcilia.
   let receipt: { status: "success" | "reverted" };
@@ -176,7 +201,13 @@ async function reconcile(deps: ReleaserDeps, milestoneId: string): Promise<Relea
     if (reopen.error) fail("reabrir el hito", reopen.error);
     return { kind: "in_progress" };
   }
-  if (!movement.tx_hash) return { kind: "in_progress" }; // no sabemos si salió: no reenviamos
+  if (!movement.tx_hash) {
+    // No sabemos si salio: no reenviamos nunca. Si otra corrida esta justo enviando, se resuelve sola.
+    console.error(
+      `[releaser] NECESITA REVISION MANUAL: milestone ${milestoneId} en converting con pago pendiente y sin hash.`,
+    );
+    return { kind: "needs_review", reason: "Pago pendiente sin hash: revisar a mano" };
+  }
   const hash = movement.tx_hash as Hash;
   const receipt = await chain.getReceipt(hash).catch(() => null);
   if (!receipt) return { kind: "in_progress" };

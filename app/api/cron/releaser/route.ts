@@ -3,6 +3,8 @@
 // para pagar uno solo (por ejemplo justo después de aprobar). GET hace el barrido (Vercel Cron).
 import { timingSafeEqual } from "node:crypto";
 
+import { z } from "zod";
+
 import { releaseApproved, releaseMilestone } from "@/agent/releaser";
 import { getReleaserDeps } from "@/agent/releaser-server";
 
@@ -15,7 +17,7 @@ function isAuthorized(request: Request): boolean {
   return received.length === expected.length && timingSafeEqual(received, expected);
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const bodySchema = z.object({ milestoneId: z.string().uuid().optional() });
 
 async function handle(milestoneId?: string) {
   try {
@@ -34,9 +36,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   if (!isAuthorized(request)) return Response.json({ error: "No autorizado" }, { status: 401 });
-  const body = (await request.json().catch(() => ({}))) as { milestoneId?: unknown };
-  if (body.milestoneId !== undefined && (typeof body.milestoneId !== "string" || !UUID_RE.test(body.milestoneId))) {
-    return Response.json({ error: "milestoneId inválido" }, { status: 400 });
-  }
-  return handle(body.milestoneId as string | undefined);
+  const raw = await request.json().catch(() => ({}));
+  const parsed = bodySchema.safeParse(raw ?? {});
+  if (!parsed.success) return Response.json({ error: "milestoneId invalido" }, { status: 400 });
+  return handle(parsed.data.milestoneId);
 }
