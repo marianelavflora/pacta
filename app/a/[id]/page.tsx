@@ -5,11 +5,12 @@ import { ShieldCheck } from "lucide-react";
 import { MilestoneCard } from "@/components/MilestoneCard";
 import { IdBadge } from "@/components/IdBadge";
 import { PageHeader } from "@/components/PageHeader";
-import { Button } from "@/components/ui/button";
+import { DepositButton } from "@/components/DepositButton";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAgreementByPublicId } from "@/lib/agreements";
 import { formatUnits } from "@/lib/amounts";
 import { getDb } from "@/lib/db";
+import type { TokenSymbol } from "@/lib/chain/tokens";
 
 export const metadata: Metadata = {
   title: "Tu acuerdo",
@@ -46,6 +47,10 @@ async function AgreementView({ id }: { id: Promise<string> }) {
   if (!agreement) notFound();
 
   const currency = agreement.clientCurrency;
+  // Falta depositar lo de los hitos todavía sin fondear (el depósito lo detecta la bóveda, PAC-21).
+  const remaining = agreement.milestones
+    .filter((m) => m.status === "pending")
+    .reduce((sum, m) => sum + BigInt(m.amount), BigInt(0));
 
   return (
     <div className="flex flex-col gap-8">
@@ -81,10 +86,7 @@ async function AgreementView({ id }: { id: Promise<string> }) {
             <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
             Tu plata queda guardada y se libera de a partes cuando aprobás cada entrega.
           </p>
-          {/* TODO(PAC-20): depósito del cliente (se puede hacer en partes). */}
-          <Button disabled size="lg">
-            Depositar
-          </Button>
+          <DepositButton currency={currency as TokenSymbol} remaining={remaining.toString()} />
         </CardContent>
       </Card>
     </div>
