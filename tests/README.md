@@ -18,3 +18,4 @@ Después de cada implementación, revisá esta carpeta: agregá o editá los tes
 | Archivo | Qué prueba | Ticket |
 |---|---|---|
 | `smoke.test.ts` | Que Vitest esté bien configurado y que los montos en `bigint` sumen sin perder precisión. | PAC-01 |
+| `statuses.test.ts` | Que las listas de estados, tipos de movimiento y fuentes de cotización de `lib/validation/statuses.ts` coincidan con los `check` del SQL de `0002`, que los estados del hito sean los oficiales, que los montos sean `numeric(78, 0)` y que existan el cascade de hitos, el `tx_hash` único y el índice de un solo pago por hito. | PAC-03 |
