@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -11,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { getAgreementByPublicId } from "@/lib/agreements";
 import { formatUnits } from "@/lib/amounts";
 import { getDb } from "@/lib/db";
+import { receiptUrl } from "@/lib/routes";
 import { milestoneStatusLabel } from "@/lib/ui/status-labels";
 
 export const metadata: Metadata = {
@@ -77,6 +79,11 @@ async function Milestones({ id }: { id: Promise<string> }) {
             <Badge variant="chip" className="w-fit">
               {milestoneStatusLabel(m.status)}
             </Badge>
+            {m.status === "paid" && (
+              <Link href={receiptUrl(m.id)} className="w-fit text-sm font-medium underline">
+                Ver recibo
+              </Link>
+            )}
             <DeliverDialog
               milestoneId={m.id}
               milestoneTitle={m.title}
