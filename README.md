@@ -116,7 +116,17 @@ For the MVP the agent wallet acts as the vault, with a cap per agreement and a d
 
 ## Run it locally
 
-*Pending (PAC-04).* Step-by-step guide, `.env.example` and commands go here once the base project (PAC-01) is in.
+Requires Node 22.12+ and Git.
+
+```bash
+git clone https://github.com/marianelavflora/pacta.git
+cd pacta
+npm install
+npm run dev     # http://localhost:3000
+npm test        # Vitest
+```
+
+*Pending (PAC-04).* Full step-by-step guide, `.env.example` and common problems.
 
 ## Demo
 
