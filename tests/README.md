@@ -1,6 +1,6 @@
 # Tests de Pactá
 
-Acá viven todas las pruebas automáticas del proyecto. La guía completa la arma PAC-60 (#60).
+Acá viven todas las pruebas automáticas del proyecto (la "caja de controles"). Si algo se rompe, un test se pone en rojo y nos enteramos antes de que le pase a alguien.
 
 ## Cómo correrlos
 
@@ -9,12 +9,50 @@ npm test             # corre todos una vez
 npm run test:watch   # los vuelve a correr cada vez que guardás
 ```
 
+`npm test` muestra cuántos pasaron, cuántos fallaron y cuántos quedan como `todo` (pendientes de escribir). En cada PR, GitHub corre `npm run lint` y `npm test` solo (`.github/workflows/test.yml`): si queda en rojo, no se mergea.
+
 ## La regla
 
-Después de cada implementación, revisá esta carpeta: agregá o editá los tests de lo que cambiaste y sumá una fila en la tabla de abajo.
+Después de cada implementación, revisá esta carpeta y agregá o editá los tests de lo que cambiaste, y actualizá esta tabla.
+
+- Si el código todavía no existe, dejá el caso como `it.todo("...")` para que se vea qué falta.
+- Cuando escribas el test de verdad, cambiá el `it.todo` por `it` y actualizá la fila.
+
+## Cómo está ordenada
+
+Las carpetas siguen el **Mapa del código** de `AGENTS.md`:
+
+| Carpeta | Qué prueba |
+|---|---|
+| `tests/api/` | Rutas de `app/api/` |
+| `tests/agent/` | Bóveda, liberador, cotizador y recordatorios (`agent/`) |
+| `tests/chain/` | Wallet, tag y tokens (`lib/chain/`) |
+| `tests/fx/` | Precio de referencia y comparación (`lib/fx/`) |
+| `tests/notify/` | Avisos por WhatsApp y mail (`lib/notify/`) |
+| `tests/validation/` | Esquemas de zod (`lib/validation/`) |
+| `tests/helpers/` | Datos de ejemplo y funciones que repiten los tests |
+
+Para importar código del proyecto usá el alias `@/` (por ejemplo `import { x } from "@/lib/fx/quote"`), igual que en la app.
+
+### Datos de ejemplo (`tests/helpers/fixtures.ts`)
+
+- `makeAgreement()`: un acuerdo en wBRL con 3 hitos (500 + 1000 + 500), montos en `bigint` con 18 decimales.
+- `makeMilestone(status)` y `milestonesByStatus`: un hito en cada estado (`pending`, `funded`, `delivered`, `reminded`, `approved`, `expired`, `converting`, `paid`, `paused`).
+- `units("12.5")`: pasa un monto escrito a unidades mínimas.
+
+Cada llamada devuelve una copia nueva, así un test no le cambia los datos a otro. Cuando exista la tabla `milestones`, ajustá el tipo `Milestone` para que coincida.
 
 ## Qué prueba cada archivo
 
-| Archivo | Qué prueba | Ticket |
-|---|---|---|
-| `smoke.test.ts` | Que Vitest esté bien configurado y que los montos en `bigint` sumen sin perder precisión. | PAC-01 |
+Una fila por archivo, ordenadas por ruta. Al sumar un test, agregá su fila en el lugar que le toca.
+
+| Archivo | Qué prueba | Casos | Ticket |
+|---|---|---|---|
+| `agent/releaser.test.ts` | Liberador y recordatorios | Pago una sola vez, `paused` no paga, aviso al día 3, liberación al día 6, topes (todos `todo`) | PAC-60 |
+| `api/agreements.test.ts` | API de acuerdos e hitos | Crear, leer, 404, entregar y aprobar (todos `todo`) | PAC-60 |
+| `chain/wallet.test.ts` | Wallet y tokens | Tag en toda transacción, red por variable, direcciones por red (todos `todo`) | PAC-60 |
+| `fx/quote.test.ts` | Cotización | Conversión en `bigint`, referencia vs DEX (todos `todo`) | PAC-60 |
+| `helpers/fixtures.test.ts` | Los datos de ejemplo | `units`, total = suma de hitos, copias nuevas, un hito por estado | PAC-60 |
+| `notify/messages.test.ts` | Avisos | Texto por estado, mail de respaldo, consentimiento de WhatsApp (todos `todo`) | PAC-60 |
+| `smoke.test.ts` | Que Vitest esté bien configurado | Montos en `bigint` suman sin perder precisión | PAC-01 |
+| `validation/agreement.test.ts` | Validación de acuerdos | Montos positivos, monedas válidas, suma de hitos (todos `todo`) | PAC-60 |
