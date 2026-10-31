@@ -50,7 +50,7 @@ Una fila por archivo, ordenadas por ruta. Al sumar un test, agregá su fila en e
 | Archivo | Qué prueba | Casos | Ticket |
 |---|---|---|---|
 | `agent/releaser.test.ts` | Liberador y recordatorios | Pago una sola vez, `paused` no paga, aviso al día 3, liberación al día 6, topes (todos `todo`) | PAC-60 |
-| `api/agreements.test.ts` | API de acuerdos e hitos | `POST /api/agreements` sin red (la base es un doble en memoria): crea o reusa la usuaria, el total sale de sumar los hitos (no de la web), hitos con `position` 1, 2, 3, reintento si el `public_id` ya existe, borra el acuerdo si fallan los hitos, responde 201, 400 o 500 sin filtrar el error de la base. Leer, 404, entregar y aprobar siguen `todo` | PAC-14 |
+| `api/agreements.test.ts` | API de acuerdos e hitos | `POST /api/agreements` sin red (la base es un doble en memoria): crea o reusa la usuaria, el total sale de sumar los hitos (no de la web), hitos con `position` 1, 2, 3, reintento si el `public_id` ya existe, borra el acuerdo si fallan los hitos, responde 201, 400 o 500 sin filtrar el error de la base. `GET /api/agreements/[id]`: acuerdo con hitos ordenados por `position` (sin mezclar hitos de otro acuerdo), montos como texto validados con `BigInt`, sin teléfonos, mails, contacto del cliente ni firma, 404 si no existe, 400 si el id tiene mal formato, 500 sin filtrar el error. Entregar y aprobar siguen `todo` | PAC-14, PAC-15 |
 | `chain/wallet.test.ts` | Wallet y tokens | Tag en toda transacción, red por variable, direcciones por red (todos `todo`) | PAC-60 |
 | `fx/quote.test.ts` | Cotización | Conversión en `bigint`, referencia vs DEX (todos `todo`) | PAC-60 |
 | `helpers/fixtures.test.ts` | Los datos de ejemplo | `units`, total = suma de hitos, copias nuevas, un hito por estado | PAC-60 |
