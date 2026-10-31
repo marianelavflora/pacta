@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAccount, useChainId, useSwitchChain, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { formatUnits } from "@/lib/amounts";
@@ -35,6 +35,7 @@ export function DepositButton({
   const remainingUnits = BigInt(remaining);
   const [text, setText] = useState(() => formatUnits(remainingUnits).replace(/\./g, ""));
   const [error, setError] = useState<string | null>(null);
+  const busy = useRef(false); // evita dos envíos por doble clic antes de que React re-renderice
 
   const target = getChain();
   const token = getToken(currency);
@@ -43,9 +44,11 @@ export function DepositButton({
   const done = !!hash && receipt.isSuccess;
 
   async function deposit() {
+    if (busy.current) return;
     setError(null);
     const check = validateDepositAmount(text);
     if (!check.ok) return setError(check.error);
+    busy.current = true;
     try {
       await writeContractAsync({
         address: token.address,
@@ -58,6 +61,8 @@ export function DepositButton({
       });
     } catch (e) {
       setError(friendlyDepositError(e));
+    } finally {
+      busy.current = false;
     }
   }
 
