@@ -112,7 +112,7 @@ export async function createAgreement(
 
 // Formato del public_id que va en el link. Es más amplio que el alfabeto de
 // newPublicId a propósito: un id con buena forma que no existe da 404, no 400.
-export const PUBLIC_ID_PATTERN = /^[0-9a-zA-Z]{8}$/;
+export const PUBLIC_ID_PATTERN = /^[0-9a-zA-Z_-]{4,32}$/;
 
 export function isValidPublicId(value: string): boolean {
   return PUBLIC_ID_PATTERN.test(value);
@@ -149,11 +149,12 @@ export type PublicAgreement = {
 
 // Columnas pedidas a mano (nunca "*"), así no se cuela un dato privado.
 const AGREEMENT_COLUMNS =
-  "id, public_id, freelancer_id, title, description, client_currency, payout_currency, total_amount, status";
+  "id, public_id, freelancer_id, title, description, client_currency, payout_currency, total_amount::text, status";
 const MILESTONE_COLUMNS =
-  "id, position, title, amount, review_days, status, delivery_url, delivery_note, delivered_at, approved_at, paid_at";
+  "id, position, title, amount::text, review_days, status, delivery_url, delivery_note, delivered_at, approved_at, paid_at";
 
-// Supabase devuelve numeric como texto. Pasarlo por BigInt confirma que es un
+// Pedimos los montos con ::text porque PostgREST manda numeric como número JSON
+// y los de 18 decimales perderían precisión. Pasarlo por BigInt confirma que es un
 // entero válido; si la base devolviera algo raro, falla en vez de mostrarlo.
 function amountText(value: unknown, what: string): string {
   if (typeof value === "string" && /^\d{1,78}$/.test(value)) return BigInt(value).toString();

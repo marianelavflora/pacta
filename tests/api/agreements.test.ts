@@ -53,7 +53,7 @@ class FakeQuery {
   // Como el cliente real, devuelve solo las columnas pedidas.
   select(columns?: string) {
     if (this.op === "insert") this.returning = true;
-    if (columns && columns !== "*") this.columns = columns.split(",").map((c) => c.trim());
+    if (columns && columns !== "*") this.columns = columns.split(",").map((c) => c.trim().replace(/::text$/, ""));
     return this;
   }
   order(column: string, options?: { ascending?: boolean }) {
@@ -355,10 +355,11 @@ describe("getAgreementByPublicId", () => {
     );
   });
 
-  it("acepta un id de 8 letras y números y rechaza otros formatos", () => {
+  it("acepta ids de 4 a 32 caracteres y rechaza otros formatos", () => {
     expect(isValidPublicId(PUBLIC_ID)).toBe(true);
     expect(isValidPublicId("noexiste")).toBe(true);
-    for (const bad of ["", "abc", "abc234567", "abc 2345", "abc-2345", "../users"]) {
+    expect(isValidPublicId("k3x9p2")).toBe(true);
+    for (const bad of ["", "abc", "a".repeat(33), "abc 2345", "abc.2345", "../users"]) {
       expect(isValidPublicId(bad)).toBe(false);
     }
   });
