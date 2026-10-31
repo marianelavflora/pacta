@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
+import { ApproveButton } from "@/components/ApproveButton";
 import { MilestoneCard } from "@/components/MilestoneCard";
 import { IdBadge } from "@/components/IdBadge";
 import { PageHeader } from "@/components/PageHeader";
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
 
 /**
  * Vista del cliente (boceto 05): `/a/<publicId>`.
- * PAC-19: datos del acuerdo y sus hitos. Faltan: depositar (PAC-20), aprobar (PAC-24), cotización (PAC-33).
+ * PAC-19: datos del acuerdo y sus hitos. Faltan: depositar (PAC-20), cotización (PAC-33).
  */
 export default function ClientAgreementPage({ params }: PageProps<"/a/[id]">) {
   const id = params.then((p) => p.id);
@@ -65,7 +66,22 @@ async function AgreementView({ id }: { id: Promise<string> }) {
             amount={m.amount}
             currency={currency}
             status={m.status}
-          />
+            deliveryUrl={m.deliveryUrl}
+            deliveryNote={m.deliveryNote}
+          >
+            {/* TODO(Pausar): el issue PAC-24 no lo pide; sumar "Pausar" cuando haya API. */}
+            <ApproveButton
+              milestoneId={m.id}
+              agreementPublicId={agreement.publicId}
+              position={m.position}
+              title={m.title}
+              amount={m.amount}
+              currency={currency}
+              status={m.status}
+              clientWallet={agreement.clientWallet}
+              freelancerName={agreement.freelancer.name}
+            />
+          </MilestoneCard>
         ))}
       </section>
 

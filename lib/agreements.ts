@@ -144,13 +144,15 @@ export type PublicAgreement = {
   payoutCurrency: string;
   totalAmount: string;
   status: string;
+  /** Billetera del cliente (ya es pública en la cadena); null hasta que se conecte. */
+  clientWallet: string | null;
   freelancer: { name: string; wallet: string };
   milestones: PublicMilestone[];
 };
 
 // Columnas pedidas a mano (nunca "*"), así no se cuela un dato privado.
 const AGREEMENT_COLUMNS =
-  "id, public_id, freelancer_id, title, description, client_currency, payout_currency, total_amount::text, status";
+  "id, public_id, freelancer_id, title, description, client_currency, payout_currency, total_amount::text, status, client_wallet";
 const MILESTONE_COLUMNS =
   "id, position, title, amount::text, review_days, status, delivery_url, delivery_note, delivered_at, approved_at, paid_at";
 
@@ -207,6 +209,7 @@ export async function getAgreementByPublicId(
     payoutCurrency: agreement.payout_currency as string,
     totalAmount: amountText(agreement.total_amount, "del acuerdo"),
     status: agreement.status as string,
+    clientWallet: textOrNull(agreement.client_wallet),
     freelancer: {
       name: freelancer.data.name as string,
       wallet: freelancer.data.wallet as string,
