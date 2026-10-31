@@ -100,6 +100,13 @@ export async function confirmDeposit(
   const attribution = await verifyTx({ client: client as never, hash }).catch(() => null);
   if (!attribution || !attribution.codes.includes(deps.tag)) return { kind: "no_tag" };
 
+  // 1b) Una tx ya asignada a otro acuerdo no puede tocar este (ni fijar su wallet de cliente).
+  const prior = await db.from("movements").select("agreement_id").eq("tx_hash", hash).maybeSingle();
+  if (prior.error) fail("buscar el depósito", prior.error);
+  if (prior.data && (prior.data as Row).agreement_id !== agreementId) {
+    return { kind: "tx_used_elsewhere" };
+  }
+
   // 2) La wallet del cliente: la primera que deposita queda fija.
   const current = agreement.client_wallet as string | null;
   if (current && current !== sender) return { kind: "wrong_sender" };

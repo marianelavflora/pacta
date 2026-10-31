@@ -250,6 +250,8 @@ describe("confirmDeposit", () => {
     expect(await confirmDeposit(deps, "nadie123", hashOf(1))).toEqual({ kind: "agreement_not_found" });
     db.tables.movements.push({ id: "x", agreement_id: "otro", kind: "deposit", tx_hash: hashOf(1) });
     expect(await confirmDeposit(deps, "abcd1234", hashOf(1))).toEqual({ kind: "tx_used_elsewhere" });
+    // La tx de otro acuerdo no debe fijar la wallet de cliente de este.
+    expect(db.tables.agreements[0].client_wallet).toBeNull();
   });
 
   it("nunca manda transacciones: el cliente falso no tiene métodos de escritura", async () => {
