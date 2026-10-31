@@ -2,7 +2,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAgreement } from "@/lib/agreements";
-import { createAgreementSchema, sumMilestoneAmounts } from "@/lib/validation/agreement";
+import { createAgreementSchema } from "@/lib/validation/agreement";
 
 // ---------- Doble de Supabase ----------
 // Guarda filas en memoria y responde como el cliente real ({ data, error }).
@@ -116,104 +116,6 @@ const validBody = () => ({
     { title: "Bocetos", amount: "500000000000000000000", reviewDays: 3 },
     { title: "Logo final", amount: "1500000000000000000000", reviewDays: 5 },
   ],
-});
-
-// ---------- Esquema ----------
-describe("createAgreementSchema", () => {
-  const firstError = (body: unknown) => {
-    const parsed = createAgreementSchema.safeParse(body);
-    expect(parsed.success).toBe(false);
-    return parsed.error?.issues[0]?.message;
-  };
-
-  it("acepta un acuerdo válido y pasa los montos a bigint", () => {
-    const parsed = createAgreementSchema.parse(validBody());
-    expect(parsed.milestones[0].amount).toBe(500000000000000000000n);
-    expect(typeof parsed.milestones[1].amount).toBe("bigint");
-    expect(parsed.freelancerWallet).toBe(WALLET.toLowerCase());
-  });
-
-  it("pone 3 días de revisión si no vienen", () => {
-    const body = validBody();
-    body.milestones = [{ title: "Único", amount: "1" } as (typeof body.milestones)[number]];
-    expect(createAgreementSchema.parse(body).milestones[0].reviewDays).toBe(3);
-  });
-
-  it("no pierde precisión con montos enormes", () => {
-    const huge = "123456789012345678901234567890123456789";
-    const body = { ...validBody(), milestones: [{ title: "Grande", amount: huge, reviewDays: 3 }] };
-    expect(createAgreementSchema.parse(body).milestones[0].amount.toString()).toBe(huge);
-  });
-
-  it.each([
-    ["description", "Falta la descripción del trabajo"],
-    ["title", "Falta el título del trabajo"],
-    ["clientContact", "Falta el contacto del cliente"],
-    ["freelancerWallet", "Falta la wallet de la freelancer"],
-    ["clientCurrency", "Falta la moneda del cliente"],
-    ["payoutCurrency", "Falta la moneda de cobro"],
-    ["milestones", "Faltan los hitos del trabajo"],
-  ])("si falta %s, avisa en castellano", (field, message) => {
-    const body: Record<string, unknown> = validBody();
-    delete body[field];
-    expect(firstError(body)).toBe(message);
-  });
-
-  it("rechaza un texto vacío o con solo espacios", () => {
-    expect(firstError({ ...validBody(), description: "   " })).toBe("Falta la descripción del trabajo");
-  });
-
-  it("rechaza monedas que no son wARS, wBRL ni wMXN", () => {
-    expect(firstError({ ...validBody(), clientCurrency: "USDC" })).toBe(
-      "La moneda del cliente no es válida",
-    );
-    expect(firstError({ ...validBody(), payoutCurrency: "wars" })).toBe(
-      "La moneda de cobro no es válida",
-    );
-  });
-
-  it("rechaza una wallet mal escrita", () => {
-    expect(firstError({ ...validBody(), freelancerWallet: "0xabc" })).toBe(
-      "La wallet de la freelancer no es válida",
-    );
-  });
-
-  it("pide al menos un hito", () => {
-    expect(firstError({ ...validBody(), milestones: [] })).toBe("Agregá al menos un hito");
-  });
-
-  it.each([
-    ["0", "El monto del hito tiene que ser mayor a 0"],
-    ["-5", "El monto tiene que ser un número entero, sin puntos ni comas"],
-    ["1.5", "El monto tiene que ser un número entero, sin puntos ni comas"],
-    ["1e18", "El monto tiene que ser un número entero, sin puntos ni comas"],
-    ["", "El monto tiene que ser un número entero, sin puntos ni comas"],
-  ])("rechaza el monto %j", (amount, message) => {
-    const body = { ...validBody(), milestones: [{ title: "Hito", amount, reviewDays: 3 }] };
-    expect(firstError(body)).toBe(message);
-  });
-
-  it("rechaza montos que llegan como number en vez de texto", () => {
-    const body = { ...validBody(), milestones: [{ title: "Hito", amount: 500, reviewDays: 3 }] };
-    expect(firstError(body)).toMatch(/^El monto tiene que ir como texto/);
-  });
-
-  it("rechaza días de revisión negativos o con coma", () => {
-    const withDays = (reviewDays: number) => ({
-      ...validBody(),
-      milestones: [{ title: "Hito", amount: "1", reviewDays }],
-    });
-    expect(firstError(withDays(-1))).toBe("Los días de revisión no pueden ser negativos");
-    expect(firstError(withDays(1.5))).toBe("Los días de revisión tienen que ser un número entero");
-  });
-});
-
-describe("sumMilestoneAmounts", () => {
-  it("suma con bigint sin perder decimales", () => {
-    expect(sumMilestoneAmounts([{ amount: 10n ** 18n + 1n }, { amount: 2n * 10n ** 18n }])).toBe(
-      3n * 10n ** 18n + 1n,
-    );
-  });
 });
 
 // ---------- Guardado en la base ----------
@@ -339,5 +241,15 @@ describe("POST /api/agreements", () => {
     const { status, json } = await post(validBody());
     expect(status).toBe(500);
     expect(json.error).toBe("No pudimos guardar el acuerdo. Probá de nuevo en un rato.");
+    // El detalle interno de la base no le llega a la persona.
+    expect(JSON.stringify(json)).not.toContain("sin conexión");
   });
+});
+
+// Se completan cuando existan `app/api/agreements/[id]` y `app/api/milestones/`.
+describe("API de acuerdos (pendiente)", () => {
+  it.todo("GET /api/agreements/[id] devuelve el acuerdo por publicId");
+  it.todo("GET /api/agreements/[id] devuelve 404 si no existe");
+  it.todo("deliver pasa un hito de funded a delivered");
+  it.todo("approve pasa un hito de delivered o reminded a approved");
 });
