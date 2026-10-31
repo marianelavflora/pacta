@@ -116,17 +116,81 @@ For the MVP the agent wallet acts as the vault, with a cap per agreement and a d
 
 ## Run it locally
 
-Requires Node 22.12+ and Git.
+### 1. Requirements
+
+- **Node.js 22.12 or newer.** The exact version is in [`.nvmrc`](.nvmrc); with [nvm](https://github.com/nvm-sh/nvm) (or [nvm-windows](https://github.com/coreybutler/nvm-windows)) run `nvm install` and `nvm use`. Check it with `node -v`.
+- **Git.**
+- Optional, only for the parts that touch the chain: a browser wallet (MetaMask, Valora or MiniPay) on Celo Sepolia.
+
+### 2. Get the code
 
 ```bash
 git clone https://github.com/marianelavflora/pacta.git
 cd pacta
 npm install
-npm run dev     # http://localhost:3000
-npm test        # Vitest
 ```
 
-*Pending (PAC-04).* Full step-by-step guide, `.env.example` and common problems.
+### 3. Environment variables
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in `.env.local`. Git ignores it, so your keys never reach the repo. Every variable has a comment in [`.env.example`](.env.example); this is where each value comes from:
+
+| Variable | Where to get it |
+|---|---|
+| `NEXT_PUBLIC_CHAIN` | Leave `celo-sepolia` (testnet). `celo` is mainnet. |
+| `NEXT_PUBLIC_ATTRIBUTION_TAG` | The team's attribution tag (see [`AGENTS.md`](AGENTS.md)). |
+| `AGENT_PRIVATE_KEY` | Agent wallet key. Only the maintainer has it; leave it empty unless you work on payments. |
+| `SUPABASE_URL` | Supabase → Project Settings → Data API → Project URL. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API Keys → the **secret** key (`sb_secret_...`) or the legacy `service_role`. Never the publishable/anon key. |
+| `SUPABASE_DB_URL` | Supabase → **Connect** → Connection string. Only needed to run migrations from scripts. |
+| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) → API Keys. |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Twilio Console → Account Info. |
+| `TWILIO_WHATSAPP_FROM` | The WhatsApp sender, like `whatsapp:+14155238886` (the Twilio sandbox works for testing). |
+| `RESEND_API_KEY` | [resend.com](https://resend.com) → API Keys. |
+| `CRON_SECRET` | Any long random string, for example `openssl rand -hex 32`. |
+| `TIME_UNIT` | `days` (real deadlines) or `minutes` (to test reminders and auto-release fast). |
+
+You only need the variables of the part you are working on: the home page runs with an empty `.env.local`.
+
+**Test CELO.** To try deposits on testnet, get free CELO for your wallet at [faucet.celo.org](https://faucet.celo.org) (pick Celo Sepolia). It is play money with no real value.
+
+### 4. Database
+
+The tables live in [`supabase/migrations/`](supabase/migrations/). To create them in your Supabase project:
+
+1. Open Supabase → **SQL Editor** → **New query**.
+2. Paste the content of each file **in order** (`0001_...`, then `0002_...`, and so on) and click **Run**.
+3. Check them in **Table Editor**: `users`, `agreements`, `milestones`, `movements`, `quotes`.
+
+The migrations are safe to run more than once.
+
+### 5. Run it
+
+```bash
+npm run dev     # app at http://localhost:3000
+npm test        # tests (Vitest)
+npm run lint    # code style (ESLint)
+npm run build   # production build, the same one Vercel runs
+```
+
+Before opening a PR, `npm run lint`, `npm test` and `npm run build` must pass.
+
+### Common problems
+
+| Problem | Fix |
+|---|---|
+| `npm install` fails or warns about `engines` | Your Node is too old. Run `nvm use` (or install Node 22.12+) and try again. |
+| `npm run dev` says port 3000 is in use | Another app is using it. Close it, or open the URL Next.js prints (usually `http://localhost:3001`). |
+| A variable is `undefined` | Check the name matches `.env.example`, the file is called `.env.local` (not `.env.local.txt`) and sits in the project root. Restart `npm run dev` after changing it. |
+| Supabase says `Invalid API key` or `permission denied` | You used the publishable/anon key. Use the secret (`sb_secret_...`) or `service_role` key. |
+| SQL Editor says a table does not exist | You ran the migrations out of order. Run them again from `0001`. |
+| The wallet shows no CELO on testnet | Make sure it is on Celo Sepolia, not mainnet, and ask the faucet again. |
+| Something is odd after pulling new changes | Delete `node_modules` and `.next`, then run `npm install` again. |
+
+If you get stuck, ask in the team chat with the exact error message. The team workflow (branches, PRs) is in [`docs/WORKFLOW.md`](docs/WORKFLOW.md), in Spanish.
 
 ## Demo
 
