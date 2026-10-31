@@ -65,7 +65,7 @@ Commits chicos y con un mensaje que diga qué cambió. Mejor diez commits chicos
 
 - En GitHub te aparece un botón amarillo **"Compare & pull request"**. Tocalo.
 - El PR ya viene con una plantilla. En la primera línea completá `Closes #14` (el número de tu issue). Eso es lo que hace que el issue se cierre solo al mergear.
-- Contá en dos líneas qué hiciste y cómo se prueba.
+- Completá la plantilla en formato APB: qué cambia en palabras simples, cómo se prueba paso a paso y las palabras nuevas. Tiene que entenderla alguien que no vio tu código.
 - En **Reviewers** elegí a alguien del equipo. Si tocaste wallet, pagos, liberador o FX, tiene que ser **Mavi**.
 - En el tablero, el ticket pasa a **En revisión**.
 
@@ -110,7 +110,7 @@ Git te marca los pedazos en conflicto con `<<<<<<<` y `>>>>>>>`. Dejá la versi�
 
 **"Hice commits en `main` sin querer."** No hagas push. Creá la rama desde donde estás (`git checkout -b pac-XX-algo`), pusheá esa rama y avisá para dejar `main` como estaba.
 
-**"Estoy trabada."** Comentá en el issue qué intentaste y dónde se rompe, y avisá por WhatsApp. Si usás un agente de IA (Claude Code, Cursor), pedile que lea `AGENTS.md` y el issue antes de empezar.
+**"Estoy trabada."** Comentá en el issue qué intentaste y dónde se rompe, y avisá por WhatsApp. Si usás un agente de IA (Claude Code, Cursor, Orca), arrancá con la frase de [`AGENTS.md`](../AGENTS.md) ("Primera vez: la frase para arrancar"): lee las reglas, te dice cuál es tu próximo ticket y te cuenta el plan antes de tocar código.
 
 ## Ritmo del equipo
 
