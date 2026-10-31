@@ -51,7 +51,7 @@ Una fila por archivo, ordenadas por ruta. Al sumar un test, agregá su fila en e
 |---|---|---|---|
 | `agent/releaser.test.ts` | Liberador y recordatorios | Pago una sola vez, `paused` no paga, aviso al día 3, liberación al día 6, topes (todos `todo`) | PAC-60 |
 | `api/agreements.test.ts` | API de acuerdos e hitos | `POST /api/agreements` sin red (la base es un doble en memoria): crea o reusa la usuaria, el total sale de sumar los hitos (no de la web), hitos con `position` 1, 2, 3, reintento si el `public_id` ya existe, borra el acuerdo si fallan los hitos, responde 201, 400 o 500 sin filtrar el error de la base. Leer, 404, entregar y aprobar siguen `todo` | PAC-14 |
-| `chain/wallet.test.ts` | Wallet y tokens | Tag en toda transacción, red por variable, direcciones por red (todos `todo`) | PAC-60 |
+| `chain/wallet.test.ts` | Wallet, red y tokens | El cliente del agente firma con el tag al final de los datos (transferencia, llamada a contrato y con `feeCurrency`), rechaza claves o tags inválidos sin mostrar la clave, la red y los links al explorador salen de `NEXT_PUBLIC_CHAIN`. No usa la red: un RPC falso guarda la tx firmada; la prueba real en testnet es `npm run tag:smoke`. Direcciones por red de `tokens.ts` (`todo`) | PAC-05 |
 | `fx/quote.test.ts` | Cotización | Conversión en `bigint`, referencia vs DEX (todos `todo`) | PAC-60 |
 | `helpers/fixtures.test.ts` | Los datos de ejemplo | `units`, total = suma de hitos, copias nuevas, un hito por estado | PAC-60 |
 | `notify/messages.test.ts` | Avisos | Texto por estado, mail de respaldo, consentimiento de WhatsApp (todos `todo`) | PAC-60 |
