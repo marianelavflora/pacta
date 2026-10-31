@@ -96,3 +96,26 @@ export function toMilestonePayload(rows: readonly MilestoneRow[]) {
     reviewDays: Number(row.reviewDays),
   }));
 }
+
+/** Pedido completo para POST /api/agreements (PAC-18). Las monedas ya tienen que estar validadas. */
+export function buildAgreementPayload(
+  details: DetailsValues,
+  rows: readonly MilestoneRow[],
+  freelancerWallet: string,
+) {
+  return {
+    freelancerWallet,
+    title: details.title.trim(),
+    description: details.description.trim(),
+    clientContact: details.clientContact.trim(),
+    clientCurrency: details.clientCurrency,
+    payoutCurrency: details.payoutCurrency,
+    milestones: toMilestonePayload(rows),
+  };
+}
+
+/** Link de WhatsApp con un mensaje listo para mandarle al cliente. */
+export function buildWhatsAppShareUrl(title: string, link: string): string {
+  const text = `Hola! Armé el acuerdo "${title.trim()}" en Pactá. Revisalo y depositá desde acá: ${link}`;
+  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
