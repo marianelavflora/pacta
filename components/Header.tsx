@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { ConnectButton } from "@/components/ConnectButton";
 import { NavLinks, NavList } from "@/components/NavLinks";
 import { routes } from "@/lib/routes";
 
@@ -9,7 +10,7 @@ const navClassName = "order-last -mx-3 w-full sm:order-none sm:mx-0 sm:w-auto";
 /**
  * Barra de arriba, igual en todas las páginas.
  * Logo (vuelve al inicio), links principales y el lugar para el botón de
- * conectar la billetera, que suma PAC-12 (#12).
+ * conectar la billetera (PAC-12).
  * En el celular los links bajan a una segunda fila para que entren.
  */
 export function Header() {
@@ -26,8 +27,9 @@ export function Header() {
         <Suspense fallback={<NavList className={navClassName} />}>
           <NavLinks className={navClassName} />
         </Suspense>
-        {/* Acá va el botón de billetera (PAC-12). */}
-        <div id="wallet-slot" className="ml-auto flex min-w-0 items-center gap-2" />
+        <div id="wallet-slot" className="ml-auto flex min-w-0 items-center gap-2">
+          <ConnectButton />
+        </div>
       </div>
     </header>
   );
