@@ -1,26 +1,141 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+ * Colores de Pactá (PAC-10).
+ *
+ * Paleta de marca: son los mismos colores del logo (docs/brand/).
+ * Abajo se "traducen" a las variables que usan los componentes de shadcn
+ * (background, primary, card, etc.), así un <Button> o una <Card> ya salen
+ * con la marca sin tocar nada.
+ *
+ * Modo oscuro: sigue lo que tenga elegido el teléfono o la compu
+ * (prefers-color-scheme). Los componentes usan `dark:` para lo mismo.
+ */
+
+@custom-variant dark (@media (prefers-color-scheme: dark));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Marca: no cambian con el modo oscuro */
+  --brand-yellow: #f4e94a;
+  --brand-green: #35d07f;
+  --brand-deep: #17231d;
+  --brand-ink: #111814;
+  --brand-paper: #f6f7f3;
+
+  /* Tokens de la interfaz, modo claro */
+  --background: #f6f7f3;
+  --foreground: #111814;
+  --card: #ffffff;
+  --card-foreground: #111814;
+  --popover: #ffffff;
+  --popover-foreground: #111814;
+  --primary: #17231d;
+  --primary-foreground: #f6f7f3;
+  --secondary: #e6ede8;
+  --secondary-foreground: #111814;
+  --muted: #e6ede8;
+  --muted-foreground: #5d6b63;
+  --accent: #e6ede8;
+  --accent-foreground: #111814;
+  --highlight: #f4e94a;
+  --highlight-foreground: #111814;
+  --success: #35d07f;
+  --success-foreground: #111814;
+  --destructive: #c8372d;
+  --border: #dfe5e0;
+  --input: #dfe5e0;
+  --ring: #35d07f;
+  --chip: #e6ede8;
+  --chip-foreground: #111814;
+
+  /* Logo: el cuadrado y la "p" se invierten en modo oscuro */
+  --logo-tile: #17231d;
+  --logo-mark: #f6f7f3;
+
+  --radius: 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #111814;
+    --foreground: #e6ede8;
+    --card: #17231d;
+    --card-foreground: #e6ede8;
+    --popover: #17231d;
+    --popover-foreground: #e6ede8;
+    --primary: #f6f7f3;
+    --primary-foreground: #111814;
+    --secondary: #22332a;
+    --secondary-foreground: #e6ede8;
+    --muted: #22332a;
+    --muted-foreground: #9fb0a6;
+    --accent: #22332a;
+    --accent-foreground: #e6ede8;
+    --destructive: #ff6b5e;
+    --border: #2a3d32;
+    --input: #2a3d32;
+    --chip: #22332a;
+    --chip-foreground: #e6ede8;
+
+    --logo-tile: #f6f7f3;
+    --logo-mark: #17231d;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chip: var(--chip);
+  --color-chip-foreground: var(--chip-foreground);
+
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-green: var(--brand-green);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-paper: var(--brand-paper);
+
+  --font-sans: var(--font-familjen), "Helvetica Neue", Arial, sans-serif;
+  --font-heading: var(--font-familjen), "Helvetica Neue", Arial, sans-serif;
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

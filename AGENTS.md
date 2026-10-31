@@ -125,7 +125,7 @@ Dónde va cada cosa. Los tickets usan estos nombres; si cambiás uno, actualizá
 | `app/api/milestones/[id]/deliver/` y `approve/` | Entregar y aprobar un hito |
 | `app/api/intake/`, `app/api/quote/`, `app/api/receipts/[id]/` | Intake con Claude, cotización, datos del recibo |
 | `app/api/cron/` | Tareas programadas (protegidas con `CRON_SECRET`) |
-| `components/` | Piezas de pantalla; `components/ui/` es shadcn |
+| `components/` | Piezas de pantalla: `Header.tsx`, `Footer.tsx`, `Logo.tsx`; `components/ui/` es shadcn |
 | `lib/db.ts` | Cliente de Supabase (solo servidor) |
 | `lib/chain/` | `chains.ts` (red según `NEXT_PUBLIC_CHAIN` y links al explorador, `txUrl`), `wagmi.ts` (navegador), `wallet.ts` (cliente con tag, solo servidor), `tokens.ts` (direcciones por red), `approval.ts` (mensaje de firma) |
 | `lib/fx/` | Precio de referencia y comparación |
@@ -188,6 +188,7 @@ El agente lo calcula así (con `gh`, la línea de comandos de GitHub; si no la t
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
 - 2026-10-31 · PAC-05: cliente único del agente en `lib/chain/wallet.ts` (tag con `withAttribution`, `feeCurrency` opcional por transacción) y red/explorador en `lib/chain/chains.ts`. Probado en Celo Sepolia con `npm run tag:smoke`.
+- 2026-10-31 · Base visual (PAC-10): letra Familjen Grotesk; colores de marca iguales al logo (`docs/brand/`): fondo `#f6f7f3`, texto `#111814`, verde profundo `#17231d` (botón principal), amarillo `#f4e94a` (no el `#FBCC5C` que decía el issue), verde `#35d07f`, chips `#e6ede8`. Tokens en `app/globals.css` (shadcn + `highlight`, `success`, `chip`, `brand-*`). Modo oscuro según el sistema (`prefers-color-scheme`), sin botón para cambiarlo. shadcn/ui estilo `radix-nova` con botones redondos grandes y tarjetas con borde fino. El layout ya pone `<main>`, `Header` y `Footer`: las páginas no deben agregar otro `<main>`.
 - 2026-10-26 · Proyecto base (PAC-01): Next.js 16, TypeScript strict con target ES2020 (para usar `bigint`), Tailwind 4, ESLint y Vitest. Pide Node 22.12 o más, porque Vitest 5 lo necesita.
 - 2026-10-26 · QA: después de cada implementación se revisan los tests de `tests/` y se documentan en `tests/README.md` (PAC-60).
 - 2026-10-26 · Frase de arranque para los agentes y regla para elegir el próximo ticket. Las descripciones de PR van en formato APB (plantilla nueva).
