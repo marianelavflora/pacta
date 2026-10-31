@@ -50,7 +50,7 @@ Una fila por archivo, ordenadas por ruta. Al sumar un test, agregá su fila en e
 | Archivo | Qué prueba | Casos | Ticket |
 |---|---|---|---|
 | `agent/releaser.test.ts` | Liberador y recordatorios | Pago una sola vez, `paused` no paga, aviso al día 3, liberación al día 6, topes (todos `todo`) | PAC-60 |
-| `api/agreements.test.ts` | API de acuerdos e hitos | Crear, leer, 404, entregar y aprobar (todos `todo`) | PAC-60 |
+| `api/agreements.test.ts` | API de acuerdos e hitos | `POST /api/agreements` sin red (la base es un doble en memoria): crea o reusa la usuaria, el total sale de sumar los hitos (no de la web), hitos con `position` 1, 2, 3, reintento si el `public_id` ya existe, borra el acuerdo si fallan los hitos, responde 201, 400 o 500 sin filtrar el error de la base. Leer, 404, entregar y aprobar siguen `todo` | PAC-14 |
 | `chain/wallet.test.ts` | Wallet y tokens | Tag en toda transacción, red por variable, direcciones por red (todos `todo`) | PAC-60 |
 | `fx/quote.test.ts` | Cotización | Conversión en `bigint`, referencia vs DEX (todos `todo`) | PAC-60 |
 | `helpers/fixtures.test.ts` | Los datos de ejemplo | `units`, total = suma de hitos, copias nuevas, un hito por estado | PAC-60 |
@@ -58,4 +58,4 @@ Una fila por archivo, ordenadas por ruta. Al sumar un test, agregá su fila en e
 | `routes.test.ts` | Direcciones de las páginas (`lib/routes.ts`) | Rutas fijas iguales al mapa del código, `clientUrl`, `freelancerUrl` y `receiptUrl`, escapa caracteres raros, no arma una dirección sin id | PAC-11 |
 | `smoke.test.ts` | Que Vitest esté bien configurado | Montos en `bigint` suman sin perder precisión | PAC-01 |
 | `statuses.test.ts` | Estados y tipos de la base | Las listas de `lib/validation/statuses.ts` coinciden con los `check` del SQL de `0002`, los estados del hito son los oficiales, montos `numeric(78, 0)`, cascade de hitos, `tx_hash` único y un solo pago por hito | PAC-03 |
-| `validation/agreement.test.ts` | Validación de acuerdos | Montos positivos, monedas válidas, suma de hitos (todos `todo`) | PAC-60 |
+| `validation/agreement.test.ts` | Validación de acuerdos (`lib/validation/agreement.ts`) | Pide todos los campos con mensajes en castellano, rechaza monedas y wallets inválidas, montos en 0, negativos, con coma o como `number`, días de revisión inválidos; no pierde precisión con `bigint`; suma de hitos | PAC-14 |
