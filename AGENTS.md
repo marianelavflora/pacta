@@ -200,6 +200,8 @@ Cuando un agente coordina a otros para avanzar varios tickets en paralelo, convi
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
+- 2026-10-31 · Aprobar un hito (PAC-25): el cliente firma EIP-712 `Approval` (dominio `{ name: "Pactá", version: "1", chainId }`; campos `mensaje`, `acuerdo` (public_id), `hito` (uuid), `posicion`, `monto` (formateado), `moneda`), armado por `buildApprovalTypedData` en `lib/chain/approval.ts`; `POST /api/milestones/[id]/approve` con `{ signature }` verifica contra `client_wallet` y deja el hito en `approved` (no paga).
+
 - 2026-10-31 · Páginas y navegación (PAC-11): esqueletos de `/nuevo`, `/a/[id]`, `/f/[id]`, `/recibo/[id]`, `/como-funciona` y `not-found`, con links en el header. Los links a páginas se arman con `lib/routes.ts`, no a mano. Como está prendido `cacheComponents`, todo lo que lea `params`, `usePathname()` o datos de la base tiene que ir dentro de `<Suspense>` (ver `components/IdBadge.tsx`); si no, `npm run build` falla. Piezas compartidas: `PageHeader` (título + volver) y `EmptyState`.
 - 2026-10-31 · Metodología sugerida para trabajar con varios agentes a la vez (ver "Varios agentes a la vez"). El cliente puede depositar en partes: los hitos pasan a `funded` en orden a medida que lo depositado los cubre.
 - 2026-10-31 · PAC-05: cliente único del agente en `lib/chain/wallet.ts` (tag con `withAttribution`, `feeCurrency` opcional por transacción) y red/explorador en `lib/chain/chains.ts`. Probado en Celo Sepolia con `npm run tag:smoke`.

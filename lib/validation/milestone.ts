@@ -28,3 +28,12 @@ export const deliverMilestoneSchema = z.object({
     .optional(),
 });
 export type DeliverMilestoneInput = z.infer<typeof deliverMilestoneSchema>;
+
+// Pedido para aprobar un hito (PAC-25): la firma del cliente.
+export const approveMilestoneSchema = z.object({
+  signature: z
+    .string({ error: "Falta la firma" })
+    .trim()
+    .regex(/^0x[0-9a-fA-F]{130}$/, "La firma no es válida"),
+});
+export type ApproveMilestoneInput = z.infer<typeof approveMilestoneSchema>;
