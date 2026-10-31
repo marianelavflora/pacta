@@ -20,9 +20,13 @@ type Props = {
   onChange: (rows: MilestoneRow[]) => void;
 };
 
+// Contador en vez de crypto.randomUUID(): Next no deja usar azar al prerenderizar.
+let nextRowId = 0;
+
 export function newMilestoneRow(): MilestoneRow {
+  nextRowId += 1;
   return {
-    id: crypto.randomUUID(),
+    id: `hito-${nextRowId}`,
     title: "",
     amount: "",
     reviewDays: String(DEFAULT_REVIEW_DAYS),
