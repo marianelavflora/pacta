@@ -183,9 +183,23 @@ El agente lo calcula así (con `gh`, la línea de comandos de GitHub; si no la t
 4. **El orden:** entre los que quedan, primero el sprint más bajo (`sprint-1` antes que `sprint-2`) y después el número de issue más bajo.
 5. **Si no queda ninguno:** decí qué ticket la traba y de quién es, así le avisa. Se puede adelantar una parte que no dependa de eso, avisando en el issue.
 
+### Varios agentes a la vez: metodología sugerida (ahorra tokens y disco)
+
+Cuando un agente coordina a otros para avanzar varios tickets en paralelo, conviene trabajar así. Sale de la primera tanda del sprint 1, donde 16 agentes gastaron cerca de 1,4 millones de tokens y las copias del repo llegaron a 6,5 GB.
+
+1. **Pocos a la vez:** 2 o 3 agentes en paralelo, con tickets que no toquen los mismos archivos. Más que eso genera conflictos de merge y los revisores terminan actualizando ramas una y otra vez.
+2. **Revisión solo donde importa:** lo que toca wallet, pagos, liberador, FX, base de datos o seguridad pasa por un agente revisor (y lo mira Mavi). Páginas, estilos y docs se mergean si los checks de GitHub (`test` y Vercel) están en verde y el PR se lee bien.
+3. **Modelo según la tarea:** el que programa usa el modelo fuerte; el revisor y las tareas mecánicas (docs, conflictos, limpiar) pueden usar uno más liviano (por ejemplo Sonnet).
+4. **Reusar copias del repo:** cada worktree con `node_modules` pesa unos 500 MB. Reusá una copia que ya tenga las dependencias instaladas en vez de crear una nueva por agente, y borrá las que ya no se usan (`git worktree remove` y `git worktree prune`).
+5. **Instrucciones cortas y concretas:** decile al agente qué archivos ya existen y qué tiene que leer; no le pidas que relea todo el repo. Pedile un reporte final corto.
+6. **Sesiones nuevas seguido:** cuando la conversación del coordinador se hace larga, cada mensaje cuesta más. Cerrala con un resumen del estado y arrancá una nueva pegando ese resumen.
+7. **Nunca imprimir secretos:** los scripts que leen `.env.local` no muestran valores, ni siquiera en los mensajes de error.
+
 ## Estado y decisiones
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
+
+- 2026-10-31 · Metodología sugerida para trabajar con varios agentes a la vez (ver "Varios agentes a la vez"). El cliente puede depositar en partes: los hitos pasan a `funded` en orden a medida que lo depositado los cubre.
 
 - 2026-10-31 · PAC-05: cliente único del agente en `lib/chain/wallet.ts` (tag con `withAttribution`, `feeCurrency` opcional por transacción) y red/explorador en `lib/chain/chains.ts`. Probado en Celo Sepolia con `npm run tag:smoke`.
 - 2026-10-31 · Base visual (PAC-10): letra Familjen Grotesk; colores de marca iguales al logo (`docs/brand/`): fondo `#f6f7f3`, texto `#111814`, verde profundo `#17231d` (botón principal), amarillo `#f4e94a` (no el `#FBCC5C` que decía el issue), verde `#35d07f`, chips `#e6ede8`. Tokens en `app/globals.css` (shadcn + `highlight`, `success`, `chip`, `brand-*`). Modo oscuro según el sistema (`prefers-color-scheme`), sin botón para cambiarlo. shadcn/ui estilo `radix-nova` con botones redondos grandes y tarjetas con borde fino. El layout ya pone `<main>`, `Header` y `Footer`: las páginas no deben agregar otro `<main>`.
