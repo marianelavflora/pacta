@@ -102,7 +102,7 @@ async function AgreementView({ id }: { id: Promise<string> }) {
             <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
             Tu plata queda guardada y se libera de a partes cuando aprobás cada entrega.
           </p>
-          <DepositButton currency={currency as TokenSymbol} remaining={remaining.toString()} />
+          <DepositButton publicId={publicId} currency={currency as TokenSymbol} remaining={remaining.toString()} />
         </CardContent>
       </Card>
     </div>
