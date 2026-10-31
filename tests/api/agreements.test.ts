@@ -1,7 +1,8 @@
-// PAC-14 · POST /api/agreements. Sin red: la base es un doble en memoria.
+// PAC-14 · POST /api/agreements y PAC-15 · GET /api/agreements/[id].
+// Sin red: la base es un doble en memoria.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createAgreement } from "@/lib/agreements";
+import { createAgreement, getAgreementByPublicId, isValidPublicId } from "@/lib/agreements";
 import { createAgreementSchema } from "@/lib/validation/agreement";
 
 // ---------- Doble de Supabase ----------
@@ -44,11 +45,19 @@ class FakeQuery {
   private rows: Row[] = [];
   private filters: [string, unknown][] = [];
   private returning = false;
+  private columns: string[] | null = null;
+  private orderBy: { column: string; ascending: boolean } | null = null;
 
   constructor(private db: FakeDb, private table: string) {}
 
-  select() {
+  // Como el cliente real, devuelve solo las columnas pedidas.
+  select(columns?: string) {
     if (this.op === "insert") this.returning = true;
+    if (columns && columns !== "*") this.columns = columns.split(",").map((c) => c.trim().replace(/::text$/, ""));
+    return this;
+  }
+  order(column: string, options?: { ascending?: boolean }) {
+    this.orderBy = { column, ascending: options?.ascending ?? true };
     return this;
   }
   insert(rows: Row | Row[]) {
@@ -90,6 +99,16 @@ class FakeQuery {
       if (!this.returning) return { data: null, error: null };
     } else {
       result = table.filter((r) => this.matches(r));
+    }
+    if (this.orderBy) {
+      const { column, ascending } = this.orderBy;
+      result = [...result].sort(
+        (a, b) => (Number(a[column]) - Number(b[column])) * (ascending ? 1 : -1),
+      );
+    }
+    if (this.columns) {
+      const columns = this.columns;
+      result = result.map((r) => Object.fromEntries(columns.map((c) => [c, r[c] ?? null])));
     }
     if (mode === "many") return { data: result, error: null };
     if (mode === "single" && result.length !== 1) {
@@ -246,10 +265,165 @@ describe("POST /api/agreements", () => {
   });
 });
 
-// Se completan cuando existan `app/api/agreements/[id]` y `app/api/milestones/`.
-describe("API de acuerdos (pendiente)", () => {
-  it.todo("GET /api/agreements/[id] devuelve el acuerdo por publicId");
-  it.todo("GET /api/agreements/[id] devuelve 404 si no existe");
+// ---------- Leer un acuerdo (PAC-15) ----------
+const PUBLIC_ID = "abc23456";
+const PHONE = "+5511999999999";
+const EMAIL = "flor@example.com";
+
+// Carga en la base un acuerdo con datos privados y los hitos desordenados.
+function seedAgreement(db: FakeDb) {
+  db.tables.users.push({
+    id: "user-1",
+    wallet: WALLET.toLowerCase(),
+    name: "Flor",
+    whatsapp: "+5491111111111",
+    whatsapp_opt_in: true,
+    email: EMAIL,
+  });
+  db.tables.agreements.push({
+    id: "agr-1",
+    public_id: PUBLIC_ID,
+    freelancer_id: "user-1",
+    client_wallet: null,
+    client_contact: PHONE,
+    title: "Logo",
+    description: "Logo y manual de marca",
+    client_currency: "wBRL",
+    payout_currency: "wARS",
+    // Supabase devuelve numeric como texto.
+    total_amount: "2000000000000000000000",
+    status: "funded",
+  });
+  const milestone = (position: number, amount: string, status: string) => ({
+    id: `ms-${position}`,
+    agreement_id: "agr-1",
+    position,
+    title: `Hito ${position}`,
+    amount,
+    review_days: 3,
+    release_days: 3,
+    status,
+    delivery_url: null,
+    delivery_note: null,
+    approval_signature: "0xfirma-privada",
+    delivered_at: null,
+    approved_at: null,
+    paid_at: null,
+  });
+  db.tables.milestones.push(
+    milestone(2, "1500000000000000000000", "pending"),
+    milestone(1, "500000000000000000000", "funded"),
+  );
+  // Un hito de otro acuerdo no se tiene que mezclar.
+  db.tables.milestones.push({ ...milestone(1, "1", "pending"), id: "otro", agreement_id: "agr-2" });
+}
+
+describe("getAgreementByPublicId", () => {
+  let db: FakeDb;
+  beforeEach(() => {
+    db = new FakeDb();
+    seedAgreement(db);
+  });
+
+  it("devuelve el acuerdo con sus hitos en orden y los montos como texto", async () => {
+    const agreement = await getAgreementByPublicId(db.asClient(), PUBLIC_ID);
+    expect(agreement).toMatchObject({
+      id: "agr-1",
+      publicId: PUBLIC_ID,
+      title: "Logo",
+      description: "Logo y manual de marca",
+      clientCurrency: "wBRL",
+      payoutCurrency: "wARS",
+      totalAmount: "2000000000000000000000",
+      status: "funded",
+      freelancer: { name: "Flor", wallet: WALLET.toLowerCase() },
+    });
+    expect(agreement?.milestones.map((m) => [m.position, m.id, m.amount, m.status])).toEqual([
+      [1, "ms-1", "500000000000000000000", "funded"],
+      [2, "ms-2", "1500000000000000000000", "pending"],
+    ]);
+  });
+
+  it("devuelve null si no existe", async () => {
+    expect(await getAgreementByPublicId(db.asClient(), "zzzzzzzz")).toBeNull();
+  });
+
+  it("falla si la base devuelve un monto que no es un entero", async () => {
+    db.tables.agreements[0].total_amount = "12.5";
+    await expect(getAgreementByPublicId(db.asClient(), PUBLIC_ID)).rejects.toThrow(
+      "El monto del acuerdo no es válido",
+    );
+  });
+
+  it("acepta ids de 4 a 32 caracteres y rechaza otros formatos", () => {
+    expect(isValidPublicId(PUBLIC_ID)).toBe(true);
+    expect(isValidPublicId("noexiste")).toBe(true);
+    expect(isValidPublicId("k3x9p2")).toBe(true);
+    for (const bad of ["", "abc", "a".repeat(33), "abc 2345", "abc.2345", "../users"]) {
+      expect(isValidPublicId(bad)).toBe(false);
+    }
+  });
+});
+
+describe("GET /api/agreements/[id]", () => {
+  let db: FakeDb;
+  beforeEach(() => {
+    db = new FakeDb();
+    seedAgreement(db);
+    fakeDb.current = db.asClient();
+  });
+
+  const get = async (id: string) => {
+    const { GET } = await import("@/app/api/agreements/[id]/route");
+    const response = await GET(new Request(`http://localhost/api/agreements/${id}`), {
+      params: Promise.resolve({ id }),
+    });
+    return { status: response.status, json: await response.json() };
+  };
+
+  it("devuelve 200 con el acuerdo y sus hitos en orden", async () => {
+    const { status, json } = await get(PUBLIC_ID);
+    expect(status).toBe(200);
+    expect(json.publicId).toBe(PUBLIC_ID);
+    expect(json.totalAmount).toBe("2000000000000000000000");
+    expect(json.milestones.map((m: { position: number }) => m.position)).toEqual([1, 2]);
+  });
+
+  it("no devuelve teléfonos, mails ni otros datos privados", async () => {
+    const { json } = await get(PUBLIC_ID);
+    const text = JSON.stringify(json);
+    for (const secret of [PHONE, EMAIL, "+5491111111111", "0xfirma-privada"]) {
+      expect(text).not.toContain(secret);
+    }
+    for (const key of ["clientContact", "client_contact", "whatsapp", "email", "approval_signature"]) {
+      expect(text).not.toContain(`"${key}"`);
+    }
+  });
+
+  it("devuelve 404 si no existe", async () => {
+    const { status, json } = await get("noexiste");
+    expect(status).toBe(404);
+    expect(json).toEqual({ error: "No encontramos este acuerdo" });
+  });
+
+  it("devuelve 400 si el id tiene un formato inválido", async () => {
+    const { status, json } = await get("no-existe!");
+    expect(status).toBe(400);
+    expect(json).toEqual({ error: "El link del acuerdo no es válido" });
+  });
+
+  it("devuelve 500 con un mensaje amable si la base falla", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    db.failNext("agreements", "select", { message: "sin conexión" });
+    const { status, json } = await get(PUBLIC_ID);
+    expect(status).toBe(500);
+    expect(json.error).toBe("No pudimos leer el acuerdo. Probá de nuevo en un rato.");
+    expect(JSON.stringify(json)).not.toContain("sin conexión");
+  });
+});
+
+// Se completan cuando exista `app/api/milestones/`.
+describe("API de hitos (pendiente)", () => {
   it.todo("deliver pasa un hito de funded a delivered");
   it.todo("approve pasa un hito de delivered o reminded a approved");
 });
