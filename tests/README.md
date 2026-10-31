@@ -56,6 +56,7 @@ Una fila por archivo, ordenadas por ruta. Al sumar un test, agregá su fila en e
 | `fx/quote.test.ts` | Cotización | Conversión en `bigint`, referencia vs DEX (todos `todo`) | PAC-60 |
 | `helpers/fixtures.test.ts` | Los datos de ejemplo | `units`, total = suma de hitos, copias nuevas, un hito por estado | PAC-60 |
 | `notify/messages.test.ts` | Avisos | Texto por estado, mail de respaldo, consentimiento de WhatsApp (todos `todo`) | PAC-60 |
+| `lib/agreement-form.test.ts` | Formulario de `/nuevo` (`lib/amounts.ts`, `lib/agreement-form.ts`) | "1500,50" pasa a unidades mínimas sin floats, rechaza montos raros, avisos de campos vacíos, contacto válido, montos vacíos/cero/negativos, entre 1 y 10 hitos, total = suma exacta | PAC-16, PAC-17 |
 | `routes.test.ts` | Direcciones de las páginas (`lib/routes.ts`) | Rutas fijas iguales al mapa del código, `clientUrl`, `freelancerUrl` y `receiptUrl`, escapa caracteres raros, no arma una dirección sin id | PAC-11 |
 | `smoke.test.ts` | Que Vitest esté bien configurado | Montos en `bigint` suman sin perder precisión | PAC-01 |
 | `statuses.test.ts` | Estados y tipos de la base | Las listas de `lib/validation/statuses.ts` coinciden con los `check` del SQL de `0002`, los estados del hito son los oficiales, montos `numeric(78, 0)`, cascade de hitos, `tx_hash` único y un solo pago por hito | PAC-03 |
