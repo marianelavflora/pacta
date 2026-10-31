@@ -208,6 +208,7 @@ Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 - 2026-10-26 · QA: después de cada implementación se revisan los tests de `tests/` y se documentan en `tests/README.md` (PAC-60).
 - 2026-10-26 · Frase de arranque para los agentes y regla para elegir el próximo ticket. Las descripciones de PR van en formato APB (plantilla nueva).
 - 2026-10-26 · No se protege `main`: queda como acuerdo del equipo, no como regla de GitHub.
+- 2026-10-31 · Tokens de prueba en Celo Sepolia (wARS/wBRL de Ripio no existen ahí), dueña la wallet del agente: tARS `0x7d0f189d248bffe3888903d071bacd5f8c435845`, tBRL `0xb02ecb85c1f37c42bf8c7aea4d13748c36a7e905`. `getToken("wARS")` devuelve tARS en testnet. Ojo: `deployContract` NO lleva el tag; se despliega con `sendTransaction` (ver `scripts/deploy-test-tokens.ts`).
 - 2026-10-26 · Wallet del agente confirmada por Mavi: `0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`. Es la del submit de Loops, se usa en testnet y en mainnet, y no se crea otra el 4 nov.
 - 2026-10-26 · Tag de atribución `celo_dc3ce5f39b37` (personal de Mavi) en `NEXT_PUBLIC_ATTRIBUTION_TAG`. Cambia si hay equipo en Loops.
 - 2026-10-26 · Sumadas referencias de tag, ERC-8004 y bridges. El Identity Registry de testnet es distinto al de mainnet.
