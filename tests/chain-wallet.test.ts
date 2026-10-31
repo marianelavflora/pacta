@@ -99,11 +99,18 @@ describe("lib/chain/wallet", () => {
     expect(() => createAgentWalletClient({ privateKey: TEST_KEY, tag: "Celo Tag", chain })).toThrow(
       /NEXT_PUBLIC_ATTRIBUTION_TAG/,
     );
-    try {
-      createAgentWalletClient({ privateKey: `${TEST_KEY.slice(0, -1)}z` as Hex, tag: TAG, chain });
-    } catch (e) {
-      expect((e as Error).message).not.toContain(TEST_KEY.slice(2, 20));
-    }
+    // Si no tirara error, el test tiene que fallar (no pasar en silencio).
+    const almostKey = `${TEST_KEY.slice(0, -1)}z` as Hex;
+    let message = "";
+    expect(() => {
+      try {
+        createAgentWalletClient({ privateKey: almostKey, tag: TAG, chain });
+      } catch (e) {
+        message = (e as Error).message;
+        throw e;
+      }
+    }).toThrow(/AGENT_PRIVATE_KEY/);
+    expect(message).not.toContain(TEST_KEY.slice(2, 20));
   });
 });
 
