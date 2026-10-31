@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { FilePlus2 } from "lucide-react";
-import { EmptyState } from "@/components/EmptyState";
+import { AgreementForm } from "@/components/agreement-form/AgreementForm";
 import { PageHeader } from "@/components/PageHeader";
 
 export const metadata: Metadata = {
@@ -24,12 +23,7 @@ export default function NewAgreementPage() {
         description="Contá qué trabajo vas a hacer, dividilo en hitos y poné cuánto vale cada uno. Después le pasás el link a tu cliente."
       />
 
-      {/* PAC-16 y PAC-17: acá va el formulario del acuerdo y sus hitos. */}
-      <EmptyState
-        icon={FilePlus2}
-        title="Muy pronto vas a poder armar tu acuerdo acá"
-        text="Vas a cargar el trabajo, los hitos y la moneda en la que cobrás. Pactá se encarga del resto."
-      />
+      <AgreementForm />
     </div>
   );
 }
