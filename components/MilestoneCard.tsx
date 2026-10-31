@@ -1,0 +1,35 @@
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { formatUnits } from "@/lib/amounts";
+import { milestoneStatusLabel } from "@/lib/ui/status";
+
+type MilestoneCardProps = {
+  position: number;
+  title: string;
+  /** Monto en unidades mínimas, como texto. */
+  amount: string;
+  currency: string;
+  status: string;
+};
+
+/** Un hito: número, título, monto y estado. Lo usan las vistas del cliente y de la freelancer. */
+export function MilestoneCard({ position, title, amount, currency, status }: MilestoneCardProps) {
+  return (
+    <Card size="sm">
+      <CardContent className="flex flex-col gap-2">
+        <div className="flex items-start justify-between gap-3">
+          <p className="font-medium">
+            <span className="text-muted-foreground">Hito {position} · </span>
+            {title}
+          </p>
+          <Badge variant="chip" className="shrink-0">
+            {milestoneStatusLabel(status)}
+          </Badge>
+        </div>
+        <p className="text-lg font-semibold">
+          {formatUnits(BigInt(amount))} {currency}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
