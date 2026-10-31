@@ -2,6 +2,7 @@
 // Recibe el cliente de la base por parámetro para poder probarlo sin red.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { customAlphabet } from "nanoid";
+import { clientUrl } from "@/lib/routes";
 import { sumMilestoneAmounts, type CreateAgreementInput } from "@/lib/validation/agreement";
 
 // Link corto para el cliente: 8 letras y números, sin caracteres que se confunden (0/O, 1/l/I).
@@ -103,7 +104,7 @@ export async function createAgreement(
   return {
     id: agreement.id,
     publicId: agreement.public_id,
-    clientUrl: `/a/${agreement.public_id}`,
+    clientUrl: clientUrl(agreement.public_id),
     totalAmount,
   };
 }
