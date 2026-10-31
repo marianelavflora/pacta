@@ -61,3 +61,4 @@ Una fila por archivo, ordenadas por ruta. Al sumar un test, agregá su fila en e
 | `smoke.test.ts` | Que Vitest esté bien configurado | Montos en `bigint` suman sin perder precisión | PAC-01 |
 | `statuses.test.ts` | Estados y tipos de la base | Las listas de `lib/validation/statuses.ts` coinciden con los `check` del SQL de `0002`, los estados del hito son los oficiales, montos `numeric(78, 0)`, cascade de hitos, `tx_hash` único y un solo pago por hito | PAC-03 |
 | `validation/agreement.test.ts` | Validación de acuerdos (`lib/validation/agreement.ts`) | Pide todos los campos con mensajes en castellano, rechaza monedas y wallets inválidas, montos en 0, negativos, con coma o como `number`, días de revisión inválidos; no pierde precisión con `bigint`; suma de hitos | PAC-14 |
+| `chain-address.test.ts` | Direcciones cortas (`lib/chain/address.ts`) | Abrevia `0x12ab…89cd`, deja igual las cortas | PAC-12 |
