@@ -39,8 +39,9 @@ Para importar código del proyecto usá el alias `@/` (por ejemplo `import { x }
 - `makeAgreement()`: un acuerdo en wBRL con 3 hitos (500 + 1000 + 500), montos en `bigint` con 18 decimales.
 - `makeMilestone(status)` y `milestonesByStatus`: un hito en cada estado (`pending`, `funded`, `delivered`, `reminded`, `approved`, `expired`, `converting`, `paid`, `paused`).
 - `units("12.5")`: pasa un monto escrito a unidades mínimas.
+- Los estados vienen de `lib/validation/statuses.ts` (la lista oficial que también usa la base), no se copian acá.
 
-Cada llamada devuelve una copia nueva, así un test no le cambia los datos a otro. Cuando exista la tabla `milestones`, ajustá el tipo `Milestone` para que coincida.
+Cada llamada devuelve una copia nueva, así un test no le cambia los datos a otro. El tipo `Milestone` toma solo algunos campos de la tabla `milestones`: si un test necesita otro, sumalo.
 
 ## Qué prueba cada archivo
 
@@ -55,4 +56,5 @@ Una fila por archivo, ordenadas por ruta. Al sumar un test, agregá su fila en e
 | `helpers/fixtures.test.ts` | Los datos de ejemplo | `units`, total = suma de hitos, copias nuevas, un hito por estado | PAC-60 |
 | `notify/messages.test.ts` | Avisos | Texto por estado, mail de respaldo, consentimiento de WhatsApp (todos `todo`) | PAC-60 |
 | `smoke.test.ts` | Que Vitest esté bien configurado | Montos en `bigint` suman sin perder precisión | PAC-01 |
+| `statuses.test.ts` | Estados y tipos de la base | Las listas de `lib/validation/statuses.ts` coinciden con los `check` del SQL de `0002`, los estados del hito son los oficiales, montos `numeric(78, 0)`, cascade de hitos, `tx_hash` único y un solo pago por hito | PAC-03 |
 | `validation/agreement.test.ts` | Validación de acuerdos | Montos positivos, monedas válidas, suma de hitos (todos `todo`) | PAC-60 |

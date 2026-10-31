@@ -1,21 +1,11 @@
 // Datos de ejemplo para los tests. Nada de esto toca la base ni la blockchain.
 // Los nombres de campos siguen las tablas de `supabase/migrations/`.
-// Cuando exista la tabla `milestones`, ajustá `Milestone` para que coincida.
+// `Milestone` toma solo algunos campos de la tabla `milestones` (0002).
 
-/** Estados del hito, en el orden del flujo (ver AGENTS.md, "Convenciones de código"). */
-export const MILESTONE_STATUSES = [
-  "pending",
-  "funded",
-  "delivered",
-  "reminded",
-  "approved",
-  "expired",
-  "converting",
-  "paid",
-  "paused",
-] as const;
+import { MILESTONE_STATUSES, type MilestoneStatus } from "@/lib/validation/statuses";
 
-export type MilestoneStatus = (typeof MILESTONE_STATUSES)[number];
+// Los estados del hito vienen de la lista oficial (la misma que usa la base).
+export { MILESTONE_STATUSES, type MilestoneStatus };
 
 export type Currency = "wARS" | "wBRL" | "wMXN";
 
