@@ -59,7 +59,7 @@ Si una persona del equipo te pide ayuda con un ticket, explicá lo que hacés en
 | IA | Claude API (intake de hitos y resúmenes) |
 | Base de datos | Supabase (Postgres) |
 | Tareas programadas | Vercel Cron |
-| Avisos | WhatsApp (API oficial de Meta o Twilio) + mail con Resend de respaldo. Nada de librerías no oficiales de WhatsApp |
+| Avisos | WhatsApp con Twilio (ver `docs/whatsapp.md`) + mail con Resend de respaldo. Nada de librerías no oficiales de WhatsApp |
 
 Tag de atribución actual: **`celo_dc3ce5f39b37`** (el personal de Mavi). Va en la variable `NEXT_PUBLIC_ATTRIBUTION_TAG`, nunca escrito en el código. Si antes de mainnet nos anotamos como equipo en Loops, se reemplaza por el tag del equipo (regla 5) y se cambia solo esa variable.
 
@@ -200,6 +200,7 @@ Cuando un agente coordina a otros para avanzar varios tickets en paralelo, convi
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
+- 2026-11-01 · WhatsApp (PAC-09): usamos **Twilio** (sandbox para probar, Content Template Builder para las plantillas). Seis plantillas Utility en castellano: `deposit_received`, `milestone_delivered`, `review_reminder`, `milestone_approved`, `auto_release`, `milestone_paid`. Textos, IDs y estado en `docs/whatsapp.md`.
 - 2026-10-31 · Aprobar un hito (PAC-25): el cliente firma EIP-712 `Approval` (dominio `{ name: "Pactá", version: "1", chainId }`; campos `mensaje`, `acuerdo` (public_id), `hito` (uuid), `posicion`, `monto` (formateado), `moneda`), armado por `buildApprovalTypedData` en `lib/chain/approval.ts`; `POST /api/milestones/[id]/approve` con `{ signature }` verifica contra `client_wallet` y deja el hito en `approved` (no paga).
 
 - 2026-10-31 · Páginas y navegación (PAC-11): esqueletos de `/nuevo`, `/a/[id]`, `/f/[id]`, `/recibo/[id]`, `/como-funciona` y `not-found`, con links en el header. Los links a páginas se arman con `lib/routes.ts`, no a mano. Como está prendido `cacheComponents`, todo lo que lea `params`, `usePathname()` o datos de la base tiene que ir dentro de `<Suspense>` (ver `components/IdBadge.tsx`); si no, `npm run build` falla. Piezas compartidas: `PageHeader` (título + volver) y `EmptyState`.

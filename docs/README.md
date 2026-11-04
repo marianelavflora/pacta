@@ -9,6 +9,7 @@
 | [`hackathon/submit-description.md`](hackathon/submit-description.md) | Texto de la descripción para el submit en Loops. |
 | [`artifacts/plan-pacta.html`](artifacts/plan-pacta.html) | Versión visual del plan (copia de la página "Plan Pactá"). |
 | [`artifacts/sprint-pacta.html`](artifacts/sprint-pacta.html) | Versión visual de los sprints (copia de la página "Sprints Pactá"). Los estados en vivo solo funcionan en claude.ai; el estado real de cada ticket está en los issues y el tablero de GitHub. |
+| [`whatsapp.md`](whatsapp.md) | Avisos por WhatsApp con Twilio: sandbox, variables y texto, ID y estado de cada plantilla (PAC-09). |
 | [`brand/`](brand/) | Logo de Pactá: ícono y logo completo, claro y oscuro, en SVG y PNG. |
 
 Documentos que viven en claude.ai (se editan ahí, en conjunto):
