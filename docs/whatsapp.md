@@ -74,10 +74,8 @@ Para copiar y pegar en el Content Template Builder. Debajo de cada una está qu�
 #### `deposit_received`
 
 ```text
-Hola {{1}}, {{2}} depositó {{3}} para el acuerdo "{{4}}". La plata ya está asegurada y podés arrancar. Ver acuerdo: {{5}}
+Hola {{1}}, {{2}} depositó {{3}} para el acuerdo "{{4}}". Podés ver el acuerdo en {{5}} y arrancar cuando quieras: la plata ya está asegurada.
 ```
-
-Ojo: termina en `{{5}}`, así que en Twilio agregá un punto final o usá la versión con botón (ver "Links" más abajo).
 
 | Hueco | Qué va | Ejemplo |
 |---|---|---|
@@ -129,10 +127,8 @@ Hola {{1}}, {{2}} aprobó "{{3}}". Estamos preparando tu pago de {{4}} y te avis
 #### `auto_release` (día 6)
 
 ```text
-Hola {{1}}, como no hubo respuesta, liberamos el pago de "{{2}}" a {{3}}. Ver recibo: {{4}}
+Hola {{1}}, como no hubo respuesta, liberamos el pago de "{{2}}" a {{3}}. Podés ver el recibo en {{4}} cuando quieras.
 ```
-
-Ojo: termina en `{{4}}`, así que en Twilio agregá un punto final o usá la versión con botón (ver "Links").
 
 | Hueco | Qué va | Ejemplo |
 |---|---|---|
@@ -144,10 +140,8 @@ Ojo: termina en `{{4}}`, así que en Twilio agregá un punto final o usá la ver
 #### `milestone_paid`
 
 ```text
-Hola {{1}}, te pagamos "{{2}}": recibiste {{3}} (tipo de cambio {{4}}). Ver recibo: {{5}}
+Hola {{1}}, te pagamos "{{2}}": recibiste {{3}} con un tipo de cambio de {{4}}. Podés ver el recibo en {{5}} cuando quieras.
 ```
-
-Ojo: termina en `{{5}}`, así que en Twilio agregá un punto final o usá la versión con botón (ver "Links").
 
 | Hueco | Qué va | Ejemplo |
 |---|---|---|
@@ -159,19 +153,16 @@ Ojo: termina en `{{5}}`, así que en Twilio agregá un punto final o usá la ver
 
 ### Links
 
-Las que terminan con un link (`deposit_received`, `auto_release`, `milestone_paid`) tienen dos opciones en Twilio:
+Ninguna plantilla termina con un hueco: Meta rechaza las que empiezan o terminan con una variable. Por eso las que llevan link siguen con una frase corta después ("…en {{5}} cuando quieras.").
 
-1. **Más simple:** agregar un punto al final (`Ver recibo: {{5}}.`). WhatsApp igual lo muestra como link.
-2. **Más prolijo:** tipo de contenido **Call to action**, con un botón "Ver recibo" cuyo link es `https://<dominio>/recibo/{{5}}`. Así la variable es solo el ID y el texto no termina en un hueco.
-
-Si una se rechaza, probá la opción 2.
+Si Meta rechaza una igual, la alternativa es el tipo de contenido **Llamada a la acción** (*Call to action*), con un botón "Ver recibo" cuyo link es `https://<dominio>/recibo/{{1}}` (el hueco es solo el ID).
 
 ## Paso a paso en Twilio
 
 1. Creá la cuenta en [twilio.com](https://www.twilio.com) (la cuenta de prueba alcanza).
 2. Messaging → Try it out → **Send a WhatsApp message**: activá el sandbox y anotá el código `join ...`.
 3. Que cada una del equipo se una (ver "Cómo unirse al sandbox") y mandá un mensaje de prueba desde esa misma pantalla.
-4. Messaging → **Content Template Builder** → *Create new*: cargá cada plantilla con su nombre, idioma Spanish, tipo *Text* (o *Call to action*) y los ejemplos de la tabla.
+4. Mensajería → **Creador de plantillas de contenido** (*Content Template Builder*) → *Crear nuevo*: cargá cada plantilla con su nombre, idioma Español (`es`), tipo de contenido **Texto** y los ejemplos de la tabla.
 5. Mandá cada una a aprobar para WhatsApp, categoría **Utility**, y anotá el ID `HX...` y el estado en la tabla de arriba.
 6. Pasale a Mavi por privado el `TWILIO_ACCOUNT_SID` y el `TWILIO_AUTH_TOKEN`.
 
