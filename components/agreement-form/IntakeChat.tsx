@@ -30,6 +30,8 @@ import { currencySymbol, formatTypedAmount } from "@/lib/ui/currency";
 import { cn } from "@/lib/utils";
 
 const MAX_TEXT_LENGTH = 4000; // el mismo tope que la API
+// Si el servidor no contesta en este tiempo cortamos la espera (la IA tiene 2 intentos de 15 s).
+const REQUEST_TIMEOUT_MS = 40_000;
 const NETWORK_ERROR =
   "No pude conectarme. Revisá tu internet y probá de nuevo.";
 
@@ -262,6 +264,7 @@ export function IntakeChat({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: joinUserMessages(allTexts) }),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
       const body = (await response.json().catch(() => null)) as
         (IntakeDraftResponse & { error?: string }) | null;
@@ -282,8 +285,9 @@ export function IntakeChat({
           ? `¡Listo! Lo armé en ${loaded} ${loaded === 1 ? "hito" : "hitos"}. Revisalo y cambiá lo que quieras:`
           : FAILURE_MESSAGE,
       );
-    } catch {
-      addMessage("agent", NETWORK_ERROR);
+    } catch (error) {
+      const timedOut = error instanceof DOMException && error.name === "TimeoutError";
+      addMessage("agent", timedOut ? FAILURE_MESSAGE : NETWORK_ERROR);
       setFailed(true);
     } finally {
       setThinking(false);

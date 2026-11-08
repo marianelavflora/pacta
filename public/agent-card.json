@@ -1,0 +1,16 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Pactá",
+  "description": "Pactá is an AI agent that lets Latin American freelancers get paid by milestones across borders, without going through the US dollar. The client deposits upfront in their own stablecoin and the agent holds it as a guarantee. When a delivery is approved, the agent pays that tranche to the freelancer and issues a receipt with the onchain transactions. If the client doesn't answer, the agent sends a reminder and, after a few more days, releases the payment on its own.",
+  "image": "https://pacta-dun.vercel.app/brand/pacta-icono.png",
+  "services": [
+    {
+      "name": "web",
+      "endpoint": "https://pacta-dun.vercel.app"
+    }
+  ],
+  "active": true,
+  "x402Support": false,
+  "supportedTrust": ["reputation"],
+  "registrations": []
+}

@@ -24,7 +24,7 @@ export const DEFAULT_INTAKE_MODEL = "gemini-3.1-flash-lite";
 
 // Si la IA no contesta a tiempo cortamos y usamos el reintento: la persona está esperando
 // en pantalla y no tiene que mirar una ruedita minutos.
-const REQUEST_TIMEOUT_MS = 20_000;
+const REQUEST_TIMEOUT_MS = 15_000;
 
 export const MAX_INTAKE_TEXT_LENGTH = 4000;
 
@@ -219,6 +219,10 @@ function isWorthRetrying(error: unknown): boolean {
   return error.status === 429 || error.status >= 500;
 }
 
+function isUnknownModel(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
+}
+
 function parseModelOutput(outputText: string | undefined): ModelOutput | null {
   if (!outputText) return null;
 
@@ -231,12 +235,27 @@ function parseModelOutput(outputText: string | undefined): ModelOutput | null {
   }
 }
 
+/** Corta la espera si la IA no contesta: el timeout del SDK no siempre alcanza y la persona quedaría mirando la ruedita. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`La IA no contestó en ${ms / 1000} s`)),
+      ms,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 /** Un intento. Devuelve la respuesta ya validada, o null si la IA no devolvió hitos utilizables. */
 async function requestModelOutput(
   client: IntakeClient,
   request: ReturnType<typeof buildIntakeRequest>,
 ): Promise<ModelOutput | null> {
-  const response = await client.interactions.create(request);
+  const response = await withTimeout(
+    client.interactions.create(request),
+    REQUEST_TIMEOUT_MS,
+  );
   const modelOutput = parseModelOutput(response.output_text);
 
   const hasMilestones =
@@ -256,7 +275,7 @@ export async function extractAgreementDraft(
   if (!cleanText)
     throw new IntakeError("El texto está vacío.", "invalid_output");
 
-  const request = buildIntakeRequest(cleanText);
+  let request = buildIntakeRequest(cleanText);
   let lastFailure: IntakeErrorKind = "invalid_output";
   let lastApiError: unknown;
 
@@ -266,6 +285,13 @@ export async function extractAgreementDraft(
       if (modelOutput) return buildDraft(modelOutput);
       lastFailure = "invalid_output";
     } catch (error) {
+      // INTAKE_MODEL apunta a un modelo que no existe (404): probamos con el modelo por defecto.
+      if (isUnknownModel(error) && request.model !== DEFAULT_INTAKE_MODEL) {
+        console.error("Intake: el modelo", request.model, "no existe; uso", DEFAULT_INTAKE_MODEL);
+        request = { ...request, model: DEFAULT_INTAKE_MODEL };
+        lastApiError = error;
+        continue;
+      }
       if (!isWorthRetrying(error)) {
         throw new IntakeError(
           "No pudimos leer el texto con la IA.",
