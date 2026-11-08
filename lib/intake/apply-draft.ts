@@ -4,7 +4,11 @@
 // Regla de fondo: la IA propone y la persona decide. Por eso nunca pisamos lo que ya
 // escribió en los datos del trabajo; solo completamos lo que está vacío.
 
-import { MAX_MILESTONES, type DetailsValues, type MilestoneRow } from "@/lib/agreement-form";
+import {
+  MAX_MILESTONES,
+  type DetailsValues,
+  type MilestoneRow,
+} from "@/lib/agreement-form";
 import type { Currency } from "@/lib/validation/agreement";
 
 /** Forma de lo que devuelve POST /api/intake (la misma que IntakeDraft del servidor). */

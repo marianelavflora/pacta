@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ShieldCheck } from "lucide-react";
+import { Clock, Lock, Receipt, ShieldCheck } from "lucide-react";
 import { ApproveButton } from "@/components/ApproveButton";
 import { MilestoneCard } from "@/components/MilestoneCard";
 import { IdBadge } from "@/components/IdBadge";
@@ -15,7 +15,8 @@ import type { TokenSymbol } from "@/lib/chain/tokens";
 
 export const metadata: Metadata = {
   title: "Tu acuerdo",
-  description: "Depositá el total del trabajo y aprobá cada hito cuando esté listo.",
+  description:
+    "Depositá el total del trabajo y aprobá cada hito cuando esté listo.",
 };
 
 /**
@@ -34,7 +35,11 @@ export default function ClientAgreementPage({ params }: PageProps<"/a/[id]">) {
 
 function LoadingAgreement() {
   return (
-    <div className="flex flex-col gap-4" aria-busy="true" aria-label="Cargando el acuerdo">
+    <div
+      className="flex flex-col gap-4"
+      aria-busy="true"
+      aria-label="Cargando el acuerdo"
+    >
       <div className="h-8 w-2/3 animate-pulse rounded-lg bg-muted" />
       <div className="h-24 animate-pulse rounded-xl bg-muted" />
       <div className="h-24 animate-pulse rounded-xl bg-muted" />
@@ -58,8 +63,40 @@ async function AgreementView({ id }: { id: Promise<string> }) {
       <PageHeader
         eyebrow={<IdBadge label="Acuerdo" id={id} />}
         title={agreement.title}
-        description={`Trabajo de ${agreement.freelancer.name}${agreement.description ? `: ${agreement.description}` : ""}`}
+        description={`${agreement.freelancer.name} te mandó este acuerdo${agreement.description ? `: ${agreement.description}` : ""}`}
       />
+
+      <section
+        aria-label="Cómo te cuidamos"
+        className="flex flex-col gap-3 rounded-3xl border bg-card p-4"
+      >
+        <h2 className="text-lg font-semibold">Cómo te cuidamos</h2>
+        <ul className="flex flex-col gap-3 text-sm">
+          <li className="flex items-start gap-3">
+            <Lock
+              className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
+            La plata queda guardada. {agreement.freelancer.name} cobra cada
+            parte recién cuando vos la aprobás.
+          </li>
+          <li className="flex items-start gap-3">
+            <Clock
+              className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
+            Si no respondés una entrega, te avisamos a los 3 días. A los 6 se
+            libera sola.
+          </li>
+          <li className="flex items-start gap-3">
+            <Receipt
+              className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
+            Cada pago tiene su recibo con el tipo de cambio.
+          </li>
+        </ul>
+      </section>
 
       <section aria-label="Hitos" className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Hitos</h2>
@@ -100,9 +137,14 @@ async function AgreementView({ id }: { id: Promise<string> }) {
           </div>
           <p className="flex gap-2 text-sm text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
-            Tu plata queda guardada y se libera de a partes cuando aprobás cada entrega.
+            Tu plata queda guardada y se libera de a partes cuando aprobás cada
+            entrega.
           </p>
-          <DepositButton publicId={publicId} currency={currency as TokenSymbol} remaining={remaining.toString()} />
+          <DepositButton
+            publicId={publicId}
+            currency={currency as TokenSymbol}
+            remaining={remaining.toString()}
+          />
         </CardContent>
       </Card>
     </div>

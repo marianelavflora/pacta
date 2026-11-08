@@ -42,7 +42,13 @@ function FieldError({ message }: { message?: string }) {
   );
 }
 
-export function MilestonesStep({ rows, rowErrors, listError, currency, onChange }: Props) {
+export function MilestonesStep({
+  rows,
+  rowErrors,
+  listError,
+  currency,
+  onChange,
+}: Props) {
   const update = (id: string, patch: Partial<MilestoneRow>) =>
     onChange(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const total = totalUnits(rows);
@@ -50,15 +56,18 @@ export function MilestonesStep({ rows, rowErrors, listError, currency, onChange 
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-muted-foreground">
-        Un hito es cada parte del trabajo que se entrega y se cobra por separado. Podés cargar hasta{" "}
-        {MAX_MILESTONES}.
+        Un hito es cada parte del trabajo que se entrega y se cobra por
+        separado. Podés cargar hasta {MAX_MILESTONES}.
       </p>
 
       <ul className="flex flex-col gap-4">
         {rows.map((row, i) => {
           const errors = rowErrors[i] ?? {};
           return (
-            <li key={row.id} className="flex flex-col gap-3 rounded-lg border bg-card p-4">
+            <li
+              key={row.id}
+              className="flex flex-col gap-3 rounded-lg border bg-card p-4"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Hito {i + 1}</span>
                 <Button
@@ -74,7 +83,10 @@ export function MilestonesStep({ rows, rowErrors, listError, currency, onChange 
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor={`${row.id}-title`} className="text-sm font-medium">
+                <label
+                  htmlFor={`${row.id}-title`}
+                  className="text-sm font-medium"
+                >
                   Qué entregás
                 </label>
                 <Input
@@ -89,7 +101,10 @@ export function MilestonesStep({ rows, rowErrors, listError, currency, onChange 
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor={`${row.id}-amount`} className="text-sm font-medium">
+                  <label
+                    htmlFor={`${row.id}-amount`}
+                    className="text-sm font-medium"
+                  >
                     Monto ({currency || "moneda del cliente"})
                   </label>
                   <Input
@@ -103,7 +118,10 @@ export function MilestonesStep({ rows, rowErrors, listError, currency, onChange 
                   <FieldError message={errors.amount} />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor={`${row.id}-days`} className="text-sm font-medium">
+                  <label
+                    htmlFor={`${row.id}-days`}
+                    className="text-sm font-medium"
+                  >
                     Días para revisar
                   </label>
                   <Input
@@ -111,7 +129,9 @@ export function MilestonesStep({ rows, rowErrors, listError, currency, onChange 
                     inputMode="numeric"
                     value={row.reviewDays}
                     aria-invalid={!!errors.reviewDays}
-                    onChange={(e) => update(row.id, { reviewDays: e.target.value })}
+                    onChange={(e) =>
+                      update(row.id, { reviewDays: e.target.value })
+                    }
                   />
                   <FieldError message={errors.reviewDays} />
                 </div>
