@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Share2 } from "lucide-react";
 import { CopyLink } from "@/components/CopyLink";
+import { ApproxAmount } from "@/components/Quote";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { buildWhatsAppShareUrl } from "@/lib/agreement-form";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,9 @@ type Props = {
   /** Total ya formateado para mostrar, por ejemplo "R$ 1.500". */
   total: string;
   clientCurrency: string;
+  /** Total en unidades mínimas y moneda de cobro, para estimar lo que va a cobrar. */
+  totalUnits: string;
+  payoutCurrency: string;
 };
 
 /** Paso 3: "Tu acuerdo está listo" (pantalla 04 de docs/pantallas.md). */
@@ -25,6 +29,8 @@ export function SubmitStep({
   milestoneCount,
   total,
   clientCurrency,
+  totalUnits,
+  payoutCurrency,
 }: Props) {
   const [shareMessage, setShareMessage] = useState<string>();
 
@@ -69,6 +75,16 @@ export function SubmitStep({
             Tu cliente paga ({clientCurrency})
           </p>
           <p className="text-4xl font-bold tracking-tight">{total}</p>
+        </div>
+        <div>
+          <p className="text-sm opacity-70">Vos cobrás aprox.</p>
+          <p className="text-2xl font-bold text-highlight">
+            <ApproxAmount
+              from={clientCurrency}
+              to={payoutCurrency}
+              amount={totalUnits}
+            />
+          </p>
         </div>
         <div className="flex gap-1.5" aria-hidden>
           {Array.from({ length: milestoneCount }, (_, index) => (

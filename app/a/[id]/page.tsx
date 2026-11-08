@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Clock, Lock, Receipt, ShieldCheck } from "lucide-react";
 import { ApproveButton } from "@/components/ApproveButton";
 import { MilestoneCard } from "@/components/MilestoneCard";
+import { ApproxPayout } from "@/components/Quote";
 import { IdBadge } from "@/components/IdBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { DepositButton } from "@/components/DepositButton";
@@ -46,6 +47,9 @@ function LoadingAgreement() {
     </div>
   );
 }
+
+// Hitos que todavía no se pagaron: ahí tiene sentido mostrar cuánto recibiría la freelancer.
+const QUOTED_STATUSES = ["funded", "delivered", "reminded"];
 
 async function AgreementView({ id }: { id: Promise<string> }) {
   const publicId = await id;
@@ -111,6 +115,14 @@ async function AgreementView({ id }: { id: Promise<string> }) {
             deliveryUrl={m.deliveryUrl}
             deliveryNote={m.deliveryNote}
           >
+            {QUOTED_STATUSES.includes(m.status) && (
+              <ApproxPayout
+                from={currency}
+                to={agreement.payoutCurrency}
+                amount={m.amount}
+                freelancerName={agreement.freelancer.name}
+              />
+            )}
             {/* TODO(Pausar): el issue PAC-24 no lo pide; sumar "Pausar" cuando haya API. */}
             <ApproveButton
               milestoneId={m.id}

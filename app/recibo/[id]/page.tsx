@@ -12,13 +12,19 @@ import { formatUnits } from "@/lib/amounts";
 import { shortAddress } from "@/lib/chain/address";
 import { addressUrl, txUrl } from "@/lib/chain/chains";
 import { getDb } from "@/lib/db";
+import type { Receipt as ReceiptData } from "@/lib/receipts";
+import { formatRate, formatBasisPoints } from "@/lib/fx/math";
+import { describeReceiptFx } from "@/lib/fx/receipt";
+import { getBestQuote } from "@/lib/fx/quote";
+import { isFxCurrency } from "@/lib/fx/sources";
 import { getReceiptByMilestoneId } from "@/lib/receipts";
 import { milestoneStatusLabel } from "@/lib/ui/status";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Recibo",
-  description: "El comprobante de un hito pagado: cuánto, en qué moneda y cuándo.",
+  description:
+    "El comprobante de un hito pagado: cuánto, en qué moneda y cuándo.",
 };
 
 /**
@@ -36,7 +42,9 @@ export default function ReceiptPage({ params }: PageProps<"/recibo/[id]">) {
         title="Recibo"
         description="El comprobante de un hito pagado: cuánto se pagó, en qué moneda y cuándo."
       />
-      <Suspense fallback={<p className="text-muted-foreground">Cargando el recibo…</p>}>
+      <Suspense
+        fallback={<p className="text-muted-foreground">Cargando el recibo…</p>}
+      >
         <Receipt id={id} />
       </Suspense>
     </div>
@@ -58,6 +66,7 @@ async function Receipt({ id }: { id: Promise<string> }) {
   if (!receipt) notFound();
 
   const { payout } = receipt;
+  const fx = payout ? await loadReceiptFx(receipt, payout) : null;
 
   if (!payout) {
     return (
@@ -65,7 +74,8 @@ async function Receipt({ id }: { id: Promise<string> }) {
         <CardContent className="flex flex-col gap-3">
           <h2 className="text-xl font-semibold">Todavía no se pagó</h2>
           <p className="text-muted-foreground">
-            Hito {receipt.position}: {receipt.milestoneTitle} · {receipt.agreementTitle}
+            Hito {receipt.position}: {receipt.milestoneTitle} ·{" "}
+            {receipt.agreementTitle}
           </p>
           <Badge variant="chip" className="w-fit">
             {milestoneStatusLabel(receipt.milestoneStatus)}
@@ -92,24 +102,50 @@ async function Receipt({ id }: { id: Promise<string> }) {
         </div>
 
         <dl className="flex flex-col gap-3 text-sm">
-          <Row label="Hito" value={`${receipt.position}. ${receipt.milestoneTitle}`} />
+          <Row
+            label="Hito"
+            value={`${receipt.position}. ${receipt.milestoneTitle}`}
+          />
           <Row label="Acuerdo" value={receipt.agreementTitle} />
           <Row label="De" value={`Tu cliente (${receipt.clientCurrency})`} />
           <Row label="Para" value={receipt.freelancer.name} />
           <Row label="Fecha" value={formatDate(receipt.paidAt ?? payout.at)} />
-          {/* TODO(PAC-34): acá va el tipo de cambio usado y lo que se ahorró (recibo v2). */}
         </dl>
+
+        {fx && (
+          <section
+            aria-label="Tipo de cambio"
+            className="flex flex-col gap-1 rounded-2xl bg-muted p-4 text-sm"
+          >
+            <h3 className="font-semibold">Tipo de cambio</h3>
+            <p>
+              Se usó 1 {receipt.clientCurrency.slice(1)} ={" "}
+              {formatRate(fx.paidRate)} {payout.currency.slice(1)}.
+            </p>
+            {fx.diffBasisPoints !== null && fx.referenceRate !== null && (
+              <p className="text-muted-foreground">
+                El precio de referencia de hoy es {formatRate(fx.referenceRate)}
+                : el pago salió {formatBasisPoints(fx.diffBasisPoints)} respecto
+                de la referencia.
+              </p>
+            )}
+          </section>
+        )}
 
         <ShareReceipt />
 
         <details className="rounded-2xl border border-border p-3 text-sm">
-          <summary className="cursor-pointer font-medium">Detalles técnicos</summary>
+          <summary className="cursor-pointer font-medium">
+            Detalles técnicos
+          </summary>
           <div className="mt-3 flex flex-col gap-3">
             <p className="text-muted-foreground">
               Billetera que recibió: {shortAddress(receipt.freelancer.wallet)}
             </p>
             {payout.txHash && (
-              <p className="break-all text-muted-foreground">Transacción: {payout.txHash}</p>
+              <p className="break-all text-muted-foreground">
+                Transacción: {payout.txHash}
+              </p>
             )}
             <div className="flex flex-col gap-2">
               {payout.txHash && (
@@ -136,6 +172,32 @@ async function Receipt({ id }: { id: Promise<string> }) {
       </CardContent>
     </Card>
   );
+}
+
+/** Tipo de cambio del pago frente a la referencia de hoy. Si la cotización falla, el recibo sale igual. */
+async function loadReceiptFx(
+  receipt: ReceiptData,
+  payout: NonNullable<ReceiptData["payout"]>,
+) {
+  const { clientCurrency } = receipt;
+  if (
+    !isFxCurrency(clientCurrency) ||
+    !isFxCurrency(payout.currency) ||
+    clientCurrency === payout.currency
+  ) {
+    return null;
+  }
+  const quote = await getBestQuote(clientCurrency, payout.currency).catch(
+    () => null,
+  );
+  const fx = describeReceiptFx({
+    clientCurrency,
+    payoutCurrency: payout.currency,
+    milestoneAmount: BigInt(receipt.milestoneAmount),
+    paidAmount: BigInt(payout.amount),
+    referenceRate: quote?.referenceRate ?? null,
+  });
+  return fx ? { ...fx, referenceRate: quote?.referenceRate ?? null } : null;
 }
 
 function Row({ label, value }: { label: string; value: string }) {
