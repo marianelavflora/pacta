@@ -11,6 +11,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 
 import { getChain, type CeloChain } from "./chains";
+import { assertMainnetApproved } from "./mainnet-guard";
 
 // El ÚNICO cliente que manda transacciones del agente (regla 1 de AGENTS.md).
 // Toda transacción que sale de acá lleva el tag de atribución al final de los
@@ -66,7 +67,9 @@ export type AgentWalletClient = ReturnType<typeof createAgentWalletClient>;
 
 function requireEnv(name: string, value: string | undefined): string {
   if (!value) {
-    throw new Error(`Falta la variable de entorno ${name}. Mirá la tabla de variables en AGENTS.md.`);
+    throw new Error(
+      `Falta la variable de entorno ${name}. Mirá la tabla de variables en AGENTS.md.`,
+    );
   }
   return value;
 }
@@ -75,9 +78,17 @@ let walletClient: AgentWalletClient | undefined;
 
 /** El cliente del agente, armado con AGENT_PRIVATE_KEY, NEXT_PUBLIC_ATTRIBUTION_TAG y NEXT_PUBLIC_CHAIN. */
 export function getAgentWalletClient(): AgentWalletClient {
+  // En mainnet no se opera sin la aprobación explícita de Mavi (AGENTS.md).
+  assertMainnetApproved(getChain().id, process.env.APPROVED_MAINNET);
   walletClient ??= createAgentWalletClient({
-    privateKey: requireEnv("AGENT_PRIVATE_KEY", process.env.AGENT_PRIVATE_KEY) as Hex,
-    tag: requireEnv("NEXT_PUBLIC_ATTRIBUTION_TAG", process.env.NEXT_PUBLIC_ATTRIBUTION_TAG),
+    privateKey: requireEnv(
+      "AGENT_PRIVATE_KEY",
+      process.env.AGENT_PRIVATE_KEY,
+    ) as Hex,
+    tag: requireEnv(
+      "NEXT_PUBLIC_ATTRIBUTION_TAG",
+      process.env.NEXT_PUBLIC_ATTRIBUTION_TAG,
+    ),
     chain: getChain(),
   });
   return walletClient;
@@ -89,7 +100,10 @@ export function getAgentAddress() {
 }
 
 /** Cliente de solo lectura (saldos, recibos, logs) de la red configurada. */
-export function createChainPublicClient(chain: CeloChain = getChain(), transport: Transport = http()) {
+export function createChainPublicClient(
+  chain: CeloChain = getChain(),
+  transport: Transport = http(),
+) {
   return createPublicClient({ chain, transport });
 }
 
