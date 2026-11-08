@@ -7,6 +7,9 @@ import {
 } from "@/lib/intake/extract";
 import { clientKey, isRateLimited, TOO_MANY_REQUESTS } from "@/lib/rate-limit";
 
+// Tope de la función en Vercel: la IA tiene sus propios plazos (ver extract.ts) y siempre contestamos antes.
+export const maxDuration = 60;
+
 // Cada pedido gasta cuota de la IA: pocos por minuto por IP.
 const INTAKE_LIMIT = { max: 8, windowMs: 60_000 };
 

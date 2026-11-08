@@ -166,6 +166,27 @@ describe("extractAgreementDraft", () => {
     expect(create).toHaveBeenCalledTimes(2);
   });
 
+  it("si INTAKE_MODEL no existe (404), prueba con el modelo por defecto", async () => {
+    vi.stubEnv("INTAKE_MODEL", "modelo-que-no-existe");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { client, create } = fakeClient(new ApiError({ message: "not found", status: 404 }), validOutput);
+    await expect(extractAgreementDraft("texto", client)).resolves.toMatchObject({ title: "Web" });
+    expect(create).toHaveBeenCalledTimes(2);
+    expect((create.mock.calls[1] as unknown as [Record<string, unknown>])[0].model).toBe("gemini-3.1-flash-lite");
+    vi.unstubAllEnvs();
+  });
+
+  it("si la IA no contesta, corta la espera y avisa (no queda colgado)", async () => {
+    vi.useFakeTimers();
+    const create = vi.fn(() => new Promise<never>(() => {}));
+    const client = { interactions: { create } } as unknown as IntakeClient;
+    const result = expect(extractAgreementDraft("texto", client)).rejects.toMatchObject({ kind: "unavailable" });
+    await vi.advanceTimersByTimeAsync(40_000);
+    await result;
+    expect(create).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
   it("rechaza texto vacío sin llamar a la IA", async () => {
     const { client, create } = fakeClient(validOutput);
     await expect(extractAgreementDraft("   ", client)).rejects.toBeInstanceOf(IntakeError);
