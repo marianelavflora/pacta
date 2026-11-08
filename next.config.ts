@@ -25,6 +25,14 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  // Links viejos: antes las vistas eran /a/<id> (cliente) y /f/<id> (freelancer).
+  // Se mantienen para que ningún link ya compartido deje de andar.
+  async redirects() {
+    return [
+      { source: "/a/:id", destination: "/cliente/:id", permanent: true },
+      { source: "/f/:id", destination: "/freelancer/:id", permanent: true },
+    ];
+  },
   turbopack: {
     rules: {
       "*.css": {
