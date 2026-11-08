@@ -37,7 +37,9 @@ export async function POST(request: Request) {
         { status: 422 },
       );
     }
-    console.error("POST /api/intake", error);
+    // Mostramos la causa real (por ejemplo "API key not valid") para poder diagnosticar en Vercel.
+    const cause = error instanceof Error ? error.cause : undefined;
+    console.error("POST /api/intake", error, "causa:", cause);
     return Response.json(
       { error: "No pudimos leer el texto ahora. Probá de nuevo en un rato o completá el formulario a mano." },
       { status: 502 },

@@ -80,8 +80,10 @@ export class IntakeError extends Error {
   constructor(
     message: string,
     readonly kind: IntakeErrorKind,
+    // El error original de la API: sirve para el log del servidor, nunca para mostrarlo.
+    cause?: unknown,
   ) {
-    super(message);
+    super(message, { cause });
     this.name = "IntakeError";
   }
 }
@@ -232,6 +234,7 @@ export async function extractAgreementDraft(
 
   const request = buildIntakeRequest(cleanText);
   let lastFailure: IntakeErrorKind = "invalid_output";
+  let lastApiError: unknown;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
@@ -240,11 +243,12 @@ export async function extractAgreementDraft(
       lastFailure = "invalid_output";
     } catch (error) {
       if (!isWorthRetrying(error)) {
-        throw new IntakeError("No pudimos leer el texto con la IA.", "unavailable");
+        throw new IntakeError("No pudimos leer el texto con la IA.", "unavailable", error);
       }
       lastFailure = "unavailable";
+      lastApiError = error;
     }
   }
 
-  throw new IntakeError("La IA no devolvió hitos válidos.", lastFailure);
+  throw new IntakeError("La IA no devolvió hitos válidos.", lastFailure, lastApiError);
 }
