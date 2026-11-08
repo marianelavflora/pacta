@@ -100,16 +100,16 @@ describe("notify: canales en orden", () => {
   });
   const data = { agreementTitle: "A", link: "https://x" };
 
-  it("si WhatsApp falla, manda el mail de respaldo", async () => {
-    const whatsapp = channel("whatsapp", "failed");
+  it("si Telegram falla, manda el mail de respaldo", async () => {
+    const telegram = channel("telegram", "failed");
     const email = channel("email", "sent");
-    const outcome = await notify("milestone_paid", { name: "Lu" }, data, [whatsapp, email]);
+    const outcome = await notify("milestone_paid", { name: "Lu" }, data, [telegram, email]);
     expect(outcome).toMatchObject({ delivered: true, channel: "email" });
-    expect(whatsapp.send).toHaveBeenCalledTimes(1);
+    expect(telegram.send).toHaveBeenCalledTimes(1);
   });
 
   it("si el primer canal funciona, no usa el segundo", async () => {
-    const first = channel("whatsapp", "sent");
+    const first = channel("telegram", "sent");
     const second = channel("email", "sent");
     await notify("milestone_paid", { name: "Lu" }, data, [first, second]);
     expect(second.send).not.toHaveBeenCalled();
@@ -123,7 +123,7 @@ describe("notify: canales en orden", () => {
 
   it("un canal que explota no frena el aviso", async () => {
     const broken: Channel = {
-      name: "whatsapp",
+      name: "telegram",
       send: async () => {
         throw new Error("boom");
       },

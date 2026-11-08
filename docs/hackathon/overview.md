@@ -49,7 +49,7 @@ You can enter several tracks, but each project wins at most one prize per track.
 - Support: Telegram t.me/realworldagentshackathon. Chainstack gives teams 3 free months. Prezenti grants (about $165K) come after.
 
 ## Project ideas
-1. **Vaquita Agent (recommended, LatAm track).** A Telegram or WhatsApp bot for splitting expenses in **wARS**. You write "dinner 48,000 split between 4", and the agent works out each share, sends payment requests, tracks who paid and settles automatically. It could also run a shared "vaquita" savings pot. It's very Argentine, easy for anyone to use, and you can get real users from your circle (people who already use Celo or MiniPay).
+1. **Vaquita Agent (recommended, LatAm track).** A Telegram bot for splitting expenses in **wARS**. You write "dinner 48,000 split between 4", and the agent works out each share, sends payment requests, tracks who paid and settles automatically. It could also run a shared "vaquita" savings pot. It's very Argentine, easy for anyone to use, and you can get real users from your circle (people who already use Celo or MiniPay).
 2. **Freelancer Cobrador (LatAm).** It invoices a client abroad in USD stablecoin and automatically converts and settles part into wARS, wBRL or wMXN, with reminders and receipts.
 3. **Remesas Agent (LatAm or Textile FX).** "Send 50 USD to my mom in Lima" gets an FX quote, picks the best route and settles in wPEN.
 4. **Research agent that pays its own way (Build with buy).** It answers questions by paying per call for search, browser or inference through buy. The prize pool is smaller, but this is the most "agentic" idea.

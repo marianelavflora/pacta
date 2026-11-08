@@ -1,10 +1,10 @@
 // notify (PAC-42): manda un aviso por los canales disponibles, en orden de preferencia, y se
-// queda con el primero que funciona. Hoy hay un canal (mail); WhatsApp (PAC-40) se suma como
-// otro `Channel` delante, sin cambiar a quien llama.
+// queda con el primero que funciona: primero Telegram (PAC-40) y, si no sale, el mail.
 import { sendEmail, type SendResult } from "./email";
 import { buildMessage, type MessageData, type NotifyEvent } from "./messages";
+import { sendTelegram } from "./telegram";
 
-export type Recipient = { name: string; email?: string | null };
+export type Recipient = { name: string; email?: string | null; telegramChatId?: string | null };
 
 export type Channel = {
   name: string;
@@ -16,6 +16,11 @@ export const emailChannel: Channel = {
   send: (recipient, message) => sendEmail(recipient.email, message),
 };
 
+export const telegramChannel: Channel = {
+  name: "telegram",
+  send: (recipient, message) => sendTelegram(recipient.telegramChatId, message),
+};
+
 export type NotifyOutcome = { delivered: boolean; channel: string | null; attempts: Record<string, string> };
 
 /** Nunca tira error: un aviso que falla no puede frenar un pago ni un cambio de estado. */
@@ -23,7 +28,7 @@ export async function notify(
   event: NotifyEvent,
   recipient: Recipient,
   data: Omit<MessageData, "recipientName">,
-  channels: readonly Channel[] = [emailChannel],
+  channels: readonly Channel[] = [telegramChannel, emailChannel],
 ): Promise<NotifyOutcome> {
   const message = buildMessage(event, { ...data, recipientName: recipient.name });
   const attempts: Record<string, string> = {};

@@ -110,10 +110,10 @@ Git te marca los pedazos en conflicto con `<<<<<<<` y `>>>>>>>`. Dejá la versi�
 
 **"Hice commits en `main` sin querer."** No hagas push. Creá la rama desde donde estás (`git checkout -b pac-XX-algo`), pusheá esa rama y avisá para dejar `main` como estaba.
 
-**"Estoy trabada."** Comentá en el issue qué intentaste y dónde se rompe, y avisá por WhatsApp. Si usás un agente de IA (Claude Code, Cursor, Orca), arrancá con la frase de [`AGENTS.md`](../AGENTS.md) ("Primera vez: la frase para arrancar"): lee las reglas, te dice cuál es tu próximo ticket y te cuenta el plan antes de tocar código.
+**"Estoy trabada."** Comentá en el issue qué intentaste y dónde se rompe, y avisá por Telegram. Si usás un agente de IA (Claude Code, Cursor, Orca), arrancá con la frase de [`AGENTS.md`](../AGENTS.md) ("Primera vez: la frase para arrancar"): lee las reglas, te dice cuál es tu próximo ticket y te cuenta el plan antes de tocar código.
 
 ## Ritmo del equipo
 
-- **Mini standup** por WhatsApp a la mañana (opcional): qué hice ayer, qué hago hoy, en qué estoy trabada.
+- **Mini standup** por Telegram a la mañana (opcional): qué hice ayer, qué hago hoy, en qué estoy trabada.
 - **Cierre de sprint:** sprint 1 el 31 oct, sprint 2 el 5 nov, sprint 3 y entrega el 8 nov.
 - **Paso a mainnet:** miércoles 4 nov, fecha fija.

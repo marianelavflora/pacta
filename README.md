@@ -25,7 +25,7 @@ A designer in Córdoba works for an agency in São Paulo. Today she gets paid in
 
 1. **The freelancer describes the job in plain words.** The agent (Claude API) turns it into an agreement with milestones, amounts and review deadlines that she can edit.
 2. **The client deposits the full amount upfront**, in their own Ripio stablecoin (for example wBRL). The agent holds it as a guarantee, so the freelancer knows the money is there before she starts.
-3. **She delivers a milestone** with a link and a note. The client gets a WhatsApp message to review it.
+3. **She delivers a milestone** with a link and a note. The client gets a Telegram message to review it.
 4. **The client approves** with a wallet signature (no gas).
 5. **The agent gets the best FX quote**, converts that tranche (wBRL → wARS) and pays her. She gets a receipt with the rate, the amounts and the onchain transactions.
 6. **If the client doesn't answer**, the agent sends a second reminder after 3 days, and after 3 more days (6 in total) it releases the payment on its own.
@@ -43,7 +43,7 @@ sequenceDiagram
   C->>A: Deposits 1,500 wBRL
   A->>F: "Funds secured, you can start"
   F->>A: Delivers milestone 1
-  A->>C: "Review delivery 1" (WhatsApp)
+  A->>C: "Review delivery 1" (Telegram)
   C->>A: Approves (wallet signature)
   A->>A: Quotes wBRL→wARS, picks the best route
   A->>F: Pays the tranche in wARS
@@ -66,7 +66,7 @@ flowchart LR
   AG --> WAL[Agent wallet + attribution tag]
   WAL --> CELO[(Celo)]
   W -- tagged deposit --> CELO
-  AG --> N[WhatsApp / email alerts]
+  AG --> N[Telegram / email alerts]
 ```
 
 | Module | What it does |
@@ -78,7 +78,7 @@ flowchart LR
 | Releaser | Pays approved or expired milestones, converting when needed, exactly once. |
 | Receipts | Matches database and chain to build a receipt for each payment. |
 | Identity & tag | Single wallet client with the attribution tag, ERC-8004 registration, agent card. |
-| Alerts | WhatsApp and email on every state change. |
+| Alerts | Telegram and email on every state change. |
 
 Milestone lifecycle: `pending → funded → delivered → reminded (day 3) → approved | expired (day 6) → converting → paid`, with `paused` available from `delivered`.
 
@@ -99,7 +99,7 @@ For the MVP the agent wallet acts as the vault, with a cap per agreement and a d
 | AI | Claude API |
 | Database | Supabase (Postgres) |
 | Scheduled jobs | Vercel Cron |
-| Alerts | WhatsApp (official API) + email with Resend |
+| Alerts | Telegram (official Bot API) + email with Resend |
 | Gas | Paid in stablecoins with `feeCurrency` |
 
 ## Onchain
@@ -147,8 +147,7 @@ Fill in `.env.local`. Git ignores it, so your keys never reach the repo. Every v
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API Keys → the **secret** key (`sb_secret_...`) or the legacy `service_role`. Never the publishable/anon key. |
 | `SUPABASE_DB_URL` | Supabase → **Connect** → Connection string. Only needed to run migrations from scripts. |
 | `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) → API Keys. |
-| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Twilio Console → Account Info. |
-| `TWILIO_WHATSAPP_FROM` | The WhatsApp sender, like `whatsapp:+14155238886` (the Twilio sandbox works for testing). |
+| `TELEGRAM_BOT_TOKEN` | The bot token from [@BotFather](https://t.me/BotFather). See [`docs/telegram.md`](docs/telegram.md). |
 | `RESEND_API_KEY` | [resend.com](https://resend.com) → API Keys. |
 | `CRON_SECRET` | Any long random string, for example `openssl rand -hex 32`. |
 | `TIME_UNIT` | `days` (real deadlines) or `minutes` (to test reminders and auto-release fast). |
@@ -203,7 +202,7 @@ If you get stuck, ask in the team chat with the exact error message. The team wo
 | Mavi ([@marianelavflora](https://github.com/marianelavflora)) | Agent, wallet, blockchain, payments, FX, AI |
 | Flor | Frontend: UI, wallet connection, views, receipts, mobile |
 | Leila ([@leispini](https://github.com/leispini)) | Database, API, FX research, tests |
-| Clau ([@ClaudiaRivero863](https://github.com/ClaudiaRivero863)) | Forms, intake UI, WhatsApp, email, "How it works" page |
+| Clau ([@ClaudiaRivero863](https://github.com/ClaudiaRivero863)) | Forms, intake UI, Telegram, email, "How it works" page |
 
 ## Docs
 

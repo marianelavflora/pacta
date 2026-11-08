@@ -74,7 +74,7 @@ export function nextQuestion(
   if (!isContact(details.clientContact.trim())) {
     return {
       kind: "clientContact",
-      text: "¿Cómo le aviso a tu cliente? Pasame su WhatsApp o su mail.",
+      text: "¿Cómo le aviso a tu cliente? Pasame su mail.",
     };
   }
   return null;
@@ -153,7 +153,7 @@ export function applyAnswer(
         return {
           ok: false,
           message:
-            "Eso no parece un WhatsApp ni un mail. Probá con algo como cliente@mail.com o +54 9 11 2345 6789.",
+            "Eso no parece un mail. Probá con algo como cliente@mail.com.",
         };
       }
       return accepted({ ...details, clientContact: text }, rows);
