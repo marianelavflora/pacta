@@ -28,7 +28,7 @@ Las carpetas siguen el **Mapa del código** de `AGENTS.md`:
 | `tests/agent/` | Bóveda (`vault.test.ts`: depósito completo, en partes, repetido, remitente, token, tx fallida, sin tag), liberador, cotizador y recordatorios (`agent/`) |
 | `tests/chain/` | Wallet, tag y tokens (`lib/chain/`) |
 | `tests/fx/` | Precio de referencia y comparación (`lib/fx/`) |
-| `tests/notify/` | Avisos por WhatsApp y mail (`lib/notify/`) |
+| `tests/notify/` | Avisos por Telegram y mail (`lib/notify/`) |
 | `tests/validation/` | Esquemas de zod (`lib/validation/`) |
 | `tests/helpers/` | Datos de ejemplo y funciones que repiten los tests |
 
@@ -57,7 +57,7 @@ Una fila por archivo, ordenadas por ruta. Al sumar un test, agregá su fila en e
 | `chain/wallet.test.ts` | Wallet, red y tokens | El cliente del agente firma con el tag al final de los datos (transferencia, llamada a contrato y con `feeCurrency`), rechaza claves o tags inválidos sin mostrar la clave, la red y los links al explorador salen de `NEXT_PUBLIC_CHAIN`. No usa la red: un RPC falso guarda la tx firmada; la prueba real en testnet es `npm run tag:smoke`. | PAC-05 |
 | `fx/quote.test.ts` | Cotización | Conversión en `bigint`, referencia vs DEX (todos `todo`) | PAC-60 |
 | `helpers/fixtures.test.ts` | Los datos de ejemplo | `units`, total = suma de hitos, copias nuevas, un hito por estado | PAC-60 |
-| `notify/messages.test.ts` | Avisos | Texto por estado, mail de respaldo, consentimiento de WhatsApp (todos `todo`) | PAC-60 |
+| `notify/messages.test.ts` | Avisos (`lib/notify/messages.ts`, `lib/notify/telegram.ts`) | Sin red, con un Telegram falso: hay un texto por cada estado que avisa, completa todos los huecos y no arma el mensaje si falta un dato; `chat_id` válido (rechaza teléfonos); manda al chat correcto; sin token, chat inválido o datos faltantes da `ok: false` sin llamar a Telegram; si Telegram rechaza o se cae la red no tira error ni muestra el token. Mail de respaldo y suscripción siguen `todo` | PAC-60, PAC-40 |
 | `lib/agreement-form.test.ts` | Formulario de `/nuevo` (`lib/amounts.ts`, `lib/agreement-form.ts`) | "1500,50" pasa a unidades mínimas sin floats, rechaza montos raros, avisos de campos vacíos, contacto válido, montos vacíos/cero/negativos, entre 1 y 10 hitos, total = suma exacta | PAC-16, PAC-17 |
 | `lib/agreement-share.test.ts` | Guardar y compartir (`lib/agreement-form.ts`) | Arma el pedido a la API con montos en unidades minimas y el link de WhatsApp con el mensaje codificado | PAC-18 |
 | `lib/approval-ui.test.ts` | Botón aprobar (`lib/approval-ui.ts`, `lib/chain/approval.ts`) | Ida y vuelta: lo que arma `buildApprovalTypedData` se firma con una cuenta de prueba de Hardhat y `verifyTypedData` lo verifica (y falla con otra posición); el botón solo aparece en `delivered`/`reminded` con la billetera del cliente; mensajes amables por error de la API y firma cancelada | PAC-24 |

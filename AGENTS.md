@@ -21,7 +21,7 @@ Es nuestro proyecto para la hackathon **Agents on Open Rails** (Loops House × C
 | Mavi | Agente, wallet, blockchain, pagos, FX, IA. Revisa todo lo que toque plata. |
 | Flor | Frontend: base visual, wallet en la web, vistas, recibos, celular. |
 | Leila | Base de datos, API, investigación de FX, tests, README. |
-| Clau | Formularios, intake en pantalla, WhatsApp, mail, página "Cómo funciona". |
+| Clau | Formularios, intake en pantalla, Telegram, mail, página "Cómo funciona". |
 
 Si una persona del equipo te pide ayuda con un ticket, explicá lo que hacés en castellano y en palabras simples. Nadie del equipo tenía experiencia en web3 al arrancar: cuando algo sea de blockchain, explicá qué pasa como si fuera la primera vez.
 
@@ -59,7 +59,7 @@ Si una persona del equipo te pide ayuda con un ticket, explicá lo que hacés en
 | IA | Claude API (intake de hitos y resúmenes) |
 | Base de datos | Supabase (Postgres) |
 | Tareas programadas | Vercel Cron |
-| Avisos | WhatsApp con Twilio (ver `docs/whatsapp.md`) + mail con Resend de respaldo. Nada de librerías no oficiales de WhatsApp |
+| Avisos | Telegram con la Bot API oficial (ver `docs/telegram.md`) + mail con Resend de respaldo |
 
 Tag de atribución actual: **`celo_dc3ce5f39b37`** (el personal de Mavi). Va en la variable `NEXT_PUBLIC_ATTRIBUTION_TAG`, nunca escrito en el código. Si antes de mainnet nos anotamos como equipo en Loops, se reemplaza por el tag del equipo (regla 5) y se cambia solo esa variable.
 
@@ -129,7 +129,7 @@ Dónde va cada cosa. Los tickets usan estos nombres; si cambiás uno, actualizá
 | `lib/db.ts` | Cliente de Supabase (solo servidor) |
 | `lib/chain/` | `chains.ts` (red según `NEXT_PUBLIC_CHAIN` y links al explorador, `txUrl`), `wagmi.ts` (navegador), `wallet.ts` (cliente con tag, solo servidor), `tokens.ts` (direcciones por red), `approval.ts` (mensaje de firma) |
 | `lib/fx/` | Precio de referencia y comparación |
-| `lib/notify/` | `whatsapp.ts`, `email.ts`, `messages.ts` (textos), `events.ts` (un aviso por cambio de estado), `index.ts` (`notify`) |
+| `lib/notify/` | `telegram.ts`, `email.ts`, `messages.ts` (textos), `events.ts` (un aviso por cambio de estado), `index.ts` (`notify`) |
 | `lib/validation/` | Esquemas de zod compartidos entre web y API |
 | `lib/ui/` | Textos de estados y errores amigables |
 | `lib/routes.ts` | Direcciones de las páginas: `routes`, `clientUrl`, `freelancerUrl`, `receiptUrl` |
@@ -139,7 +139,7 @@ Dónde va cada cosa. Los tickets usan estos nombres; si cambiás uno, actualizá
 | `scripts/` | Scripts sueltos |
 | `public/` | Logos (`public/brand/`) y `agent-card.json` |
 
-Variables de entorno clave: `NEXT_PUBLIC_CHAIN` (`celo-sepolia` o `celo`), `NEXT_PUBLIC_ATTRIBUTION_TAG`, `AGENT_PRIVATE_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `TWILIO_*`, `RESEND_API_KEY`, `CRON_SECRET`, `TIME_UNIT` (`days` o `minutes` para probar plazos rápido). Todas listadas en `.env.example`, sin valores.
+Variables de entorno clave: `NEXT_PUBLIC_CHAIN` (`celo-sepolia` o `celo`), `NEXT_PUBLIC_ATTRIBUTION_TAG`, `AGENT_PRIVATE_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `TELEGRAM_BOT_TOKEN`, `RESEND_API_KEY`, `CRON_SECRET`, `TIME_UNIT` (`days` o `minutes` para probar plazos rápido). Todas listadas en `.env.example`, sin valores.
 
 ## Cómo trabajamos
 
@@ -200,7 +200,7 @@ Cuando un agente coordina a otros para avanzar varios tickets en paralelo, convi
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
-- 2026-11-01 · WhatsApp (PAC-09): usamos **Twilio** (sandbox para probar, Content Template Builder para las plantillas). Seis plantillas Utility en castellano: `deposit_received`, `milestone_delivered`, `review_reminder`, `milestone_approved`, `auto_release`, `milestone_paid`. Textos, IDs y estado en `docs/whatsapp.md`.
+- 2026-11-08 · Avisos por **Telegram** en vez de WhatsApp (PAC-09, PAC-40): sin costo por mensaje y sin plantillas que aprobar. Bot con la Bot API oficial; token en `TELEGRAM_BOT_TOKEN` (reemplaza a `TWILIO_*`). El bot solo le escribe a quien tocó "Iniciar", por eso se guarda el `chat_id` y no el teléfono. Textos en `lib/notify/messages.ts`, envío con `sendTelegram` en `lib/notify/telegram.ts`. Detalle y próximos pasos en `docs/telegram.md`.
 - 2026-10-31 · Aprobar un hito (PAC-25): el cliente firma EIP-712 `Approval` (dominio `{ name: "Pactá", version: "1", chainId }`; campos `mensaje`, `acuerdo` (public_id), `hito` (uuid), `posicion`, `monto` (formateado), `moneda`), armado por `buildApprovalTypedData` en `lib/chain/approval.ts`; `POST /api/milestones/[id]/approve` con `{ signature }` verifica contra `client_wallet` y deja el hito en `approved` (no paga).
 
 - 2026-10-31 · Páginas y navegación (PAC-11): esqueletos de `/nuevo`, `/a/[id]`, `/f/[id]`, `/recibo/[id]`, `/como-funciona` y `not-found`, con links en el header. Los links a páginas se arman con `lib/routes.ts`, no a mano. Como está prendido `cacheComponents`, todo lo que lea `params`, `usePathname()` o datos de la base tiene que ir dentro de `<Suspense>` (ver `components/IdBadge.tsx`); si no, `npm run build` falla. Piezas compartidas: `PageHeader` (título + volver) y `EmptyState`.

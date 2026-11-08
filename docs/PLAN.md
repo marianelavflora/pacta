@@ -37,7 +37,7 @@ sequenceDiagram
   C->>A: Deposita 1.500 wBRL (tx con tag)
   A->>F: "Fondos asegurados, podés arrancar"
   F->>A: Entrega hito 1 (link + nota)
-  A->>C: "Revisá la entrega 1" (WhatsApp)
+  A->>C: "Revisá la entrega 1" (Telegram)
   C->>A: Aprueba (firma con su wallet)
   A->>A: Cotiza wBRL→wARS y elige la mejor ruta
   A->>F: Paga el tramo en wARS (tx con tag)
@@ -61,7 +61,7 @@ sequenceDiagram
 | RF-08 | Al aprobarse, el agente cotiza, convierte si hace falta y paga el tramo. | MVP |
 | RF-09 | Sin respuesta en 3 días: segundo aviso. Sin respuesta 3 días más (6 en total): libera solo. Plazos configurables. | MVP |
 | RF-10 | Cada pago genera un recibo con montos, tipo de cambio, referencia y links on-chain. | MVP |
-| RF-11 | Avisos por WhatsApp (y mail de respaldo) en cada cambio de estado. | Deseable |
+| RF-11 | Avisos por Telegram (y mail de respaldo) en cada cambio de estado. | Deseable |
 | RF-12 | El cliente puede pausar un hito; la disputa se resuelve a mano. | Deseable |
 | RF-13 | El agente resume la entrega para el cliente. | Deseable |
 | RF-14 | Contrato de garantía on-chain en lugar de la bóveda. | Extra |
@@ -95,7 +95,7 @@ flowchart LR
   AG --> WAL[Wallet del agente con tag]
   WAL --> CELO[(Celo)]
   W -- depósito con tag --> CELO
-  AG --> N[Avisos WhatsApp / mail]
+  AG --> N[Avisos Telegram / mail]
 ```
 
 | Módulo | Qué hace |
@@ -107,11 +107,11 @@ flowchart LR
 | M5 Liberador | Paga hitos aprobados o vencidos, convierte si hace falta, una sola vez. |
 | M6 Recibos | Cruza base y cadena, arma el recibo de cada pago. |
 | M7 Identidad y tag | Cliente de wallet único con tag, registro ERC-8004, agent card. |
-| M8 Avisos | WhatsApp y mail en cada cambio de estado. |
+| M8 Avisos | Telegram y mail en cada cambio de estado (`docs/telegram.md`). |
 
 ## Datos
 
-- **Usuaria:** wallet, nombre, número de WhatsApp (con permiso) y mail de respaldo.
+- **Usuaria:** wallet, nombre, `chat_id` de Telegram (cuando toca "Iniciar" en el bot) y mail de respaldo.
 - **Acuerdo:** freelancer, cliente, descripción, moneda del cliente, moneda de cobro, total, estado, link público.
 - **Hito:** acuerdo, orden, título, monto, plazos de revisión, estado, link de entrega, fechas.
 - **Movimiento:** hito o acuerdo, tipo (depósito, conversión, pago, devolución), monedas, montos, tipo de cambio, hash, estado.
@@ -146,6 +146,6 @@ Office Hours: jueves 29 oct y 5 nov, 09:00 ART.
 | Pocos usuarios independientes | Se buscan desde el sprint 1. Meta: mínimo 10, ideal 20. |
 | Transacciones sin tag | Un único cliente de wallet con tag; revisar cada tx nueva en el explorador. |
 | Se filtra la clave del agente | Solo como secreto en Vercel, topes y saldo bajo. |
-| Meta tarda en aprobar WhatsApp | Se pide en el sprint 1; mientras, sandbox de Twilio y mail. |
+| Meta tarda en aprobar plantillas de WhatsApp | Se usa Telegram, que no pide aprobar plantillas. |
 | Poco tiempo en mainnet | El paso a mainnet del 4 nov no se mueve. |
 | Equipo nuevo en web3 | Tickets chicos, explicaciones simples, contrato como extra. |
