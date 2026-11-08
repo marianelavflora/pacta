@@ -14,7 +14,9 @@ function isAuthorized(request: Request): boolean {
   const header = request.headers.get("authorization") ?? "";
   const expected = Buffer.from(`Bearer ${secret}`);
   const received = Buffer.from(header);
-  return received.length === expected.length && timingSafeEqual(received, expected);
+  return (
+    received.length === expected.length && timingSafeEqual(received, expected)
+  );
 }
 
 export async function GET(request: Request) {
@@ -28,6 +30,9 @@ export async function GET(request: Request) {
     return Response.json(await scanDeposits(getVaultDeps(), lookback));
   } catch (error) {
     console.error("GET /api/cron/vault", error);
-    return Response.json({ error: "No pudimos revisar los depósitos" }, { status: 500 });
+    return Response.json(
+      { error: "No pudimos revisar los depósitos" },
+      { status: 500 },
+    );
   }
 }

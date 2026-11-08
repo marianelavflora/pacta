@@ -12,8 +12,19 @@ export type Currency = (typeof CURRENCIES)[number];
 // Tope de días de revisión de un hito, para que nadie ponga 10000 por error.
 export const MAX_REVIEW_DAYS = 60;
 
-const requiredText = (missing: string) =>
-  z.string({ error: missing }).trim().min(1, missing);
+// Tope de largo para que nadie llene la base con textos enormes.
+const MAX_SHORT_TEXT = 200;
+const MAX_LONG_TEXT = 2000;
+
+const requiredText = (missing: string, maxLength: number = MAX_SHORT_TEXT) =>
+  z
+    .string({ error: missing })
+    .trim()
+    .min(1, missing)
+    .max(
+      maxLength,
+      `El texto es demasiado largo (máximo ${maxLength} caracteres)`,
+    );
 
 const currency = (missing: string, invalid: string) =>
   z.enum(CURRENCIES, {
@@ -27,12 +38,18 @@ export const amountSchema = z
     error: (issue) =>
       issue.input === undefined
         ? "Falta el monto del hito"
-        : "El monto tiene que ir como texto, por ejemplo \"500000000000000000000\"",
+        : 'El monto tiene que ir como texto, por ejemplo "500000000000000000000"',
   })
   .trim()
-  .regex(/^\d{1,78}$/, "El monto tiene que ser un número entero, sin puntos ni comas")
+  .regex(
+    /^\d{1,78}$/,
+    "El monto tiene que ser un número entero, sin puntos ni comas",
+  )
   .transform((value) => BigInt(value))
-  .refine((value) => value > BigInt(0), "El monto del hito tiene que ser mayor a 0");
+  .refine(
+    (value) => value > BigInt(0),
+    "El monto del hito tiene que ser mayor a 0",
+  );
 
 export const milestoneInputSchema = z.object({
   title: requiredText("Falta el título del hito"),
@@ -41,7 +58,10 @@ export const milestoneInputSchema = z.object({
     .number({ error: "Los días de revisión tienen que ser un número" })
     .int("Los días de revisión tienen que ser un número entero")
     .min(0, "Los días de revisión no pueden ser negativos")
-    .max(MAX_REVIEW_DAYS, `Los días de revisión no pueden ser más de ${MAX_REVIEW_DAYS}`)
+    .max(
+      MAX_REVIEW_DAYS,
+      `Los días de revisión no pueden ser más de ${MAX_REVIEW_DAYS}`,
+    )
     .default(3),
 });
 
@@ -53,12 +73,22 @@ export const createAgreementSchema = z.object({
     // En la base las wallets van en minúscula.
     .transform((wallet) => wallet.toLowerCase()),
   // Opcional: si la usuaria es nueva, se guarda con este nombre.
-  freelancerName: z.string().trim().max(100, "El nombre es demasiado largo").optional(),
+  freelancerName: z
+    .string()
+    .trim()
+    .max(100, "El nombre es demasiado largo")
+    .optional(),
   title: requiredText("Falta el título del trabajo"),
-  description: requiredText("Falta la descripción del trabajo"),
+  description: requiredText("Falta la descripción del trabajo", MAX_LONG_TEXT),
   clientContact: requiredText("Falta el contacto del cliente"),
-  clientCurrency: currency("Falta la moneda del cliente", "La moneda del cliente no es válida"),
-  payoutCurrency: currency("Falta la moneda de cobro", "La moneda de cobro no es válida"),
+  clientCurrency: currency(
+    "Falta la moneda del cliente",
+    "La moneda del cliente no es válida",
+  ),
+  payoutCurrency: currency(
+    "Falta la moneda de cobro",
+    "La moneda de cobro no es válida",
+  ),
   milestones: z
     .array(milestoneInputSchema, { error: "Faltan los hitos del trabajo" })
     .min(1, "Agregá al menos un hito")
@@ -73,6 +103,11 @@ export type CreateAgreementInput = z.infer<typeof createAgreementSchema>;
 export type MilestoneInput = z.infer<typeof milestoneInputSchema>;
 
 // Suma los montos de los hitos. El total siempre se calcula acá, nunca se confía en la web.
-export function sumMilestoneAmounts(milestones: readonly { amount: bigint }[]): bigint {
-  return milestones.reduce((total, milestone) => total + milestone.amount, BigInt(0));
+export function sumMilestoneAmounts(
+  milestones: readonly { amount: bigint }[],
+): bigint {
+  return milestones.reduce(
+    (total, milestone) => total + milestone.amount,
+    BigInt(0),
+  );
 }

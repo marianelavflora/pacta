@@ -1,14 +1,25 @@
 // POST /api/agreements: la freelancer crea un acuerdo con sus hitos (PAC-14).
 import { createAgreement } from "@/lib/agreements";
 import { getDb } from "@/lib/db";
+import { clientKey, isRateLimited, TOO_MANY_REQUESTS } from "@/lib/rate-limit";
 import { createAgreementSchema } from "@/lib/validation/agreement";
 
+// Crear acuerdos: unos pocos por minuto por IP alcanzan para una persona real.
+const CREATE_LIMIT = { max: 10, windowMs: 60_000 };
+
 export async function POST(request: Request) {
+  if (isRateLimited(`agreements:${clientKey(request)}`, CREATE_LIMIT)) {
+    return Response.json(TOO_MANY_REQUESTS, { status: 429 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return Response.json({ error: "El pedido no es un JSON válido" }, { status: 400 });
+    return Response.json(
+      { error: "El pedido no es un JSON válido" },
+      { status: 400 },
+    );
   }
 
   const parsed = createAgreementSchema.safeParse(body);
@@ -16,7 +27,10 @@ export async function POST(request: Request) {
     // Devolvemos el primer problema, que es el que la persona tiene que arreglar.
     const issue = parsed.error.issues[0];
     return Response.json(
-      { error: issue?.message ?? "Los datos del acuerdo no son válidos", field: issue?.path.join(".") },
+      {
+        error: issue?.message ?? "Los datos del acuerdo no son válidos",
+        field: issue?.path.join("."),
+      },
       { status: 400 },
     );
   }
