@@ -31,6 +31,11 @@ export default function Home() {
             <Link href="/como-funciona">Tengo que pagar</Link>
           </Button>
         </div>
+        <p className="text-sm text-muted-foreground">
+          Para usar Pactá necesitás una billetera:{" "}
+          <strong className="font-semibold text-foreground">MetaMask o MiniPay</strong> es
+          obligatorio para crear, depositar y aprobar.
+        </p>
       </section>
 
       <Card>
