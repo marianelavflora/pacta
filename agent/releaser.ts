@@ -35,6 +35,8 @@ export type ReleaserDeps = {
   tokenAddress: (currency: TokenSymbol) => Address;
   /** Tope de seguridad por pago, en unidades mínimas (opcional). Los topes completos son PAC-46. */
   maxPayoutPerMilestone?: bigint;
+  /** Aviso "hito pagado" (PAC-42). Opcional: un aviso que falla nunca frena ni deshace un pago. */
+  onPaid?: (agreementId: string, milestoneId: string) => Promise<unknown>;
 };
 
 export type ReleaseResult =
@@ -52,6 +54,7 @@ export type ReleaseResult =
 
 type Row = Record<string, unknown>;
 const UNIQUE_VIOLATION = "23505";
+const PAYABLE = ["approved", "expired"];
 
 function fail(step: string, error: { message: string }): never {
   throw new Error(`No se pudo ${step}: ${error.message}`);
@@ -75,7 +78,8 @@ export async function releaseMilestone(deps: ReleaserDeps, milestoneId: string):
 
   if (status === "paid") return { kind: "already_paid" };
   if (status === "converting") return reconcile(deps, milestoneId);
-  if (status !== "approved") return { kind: "wrong_status", status };
+  // `expired` = el cliente no respondió en 6 días y el agente lo liberó solo (agent/reminders.ts).
+  if (!PAYABLE.includes(status)) return { kind: "wrong_status", status };
 
   const agreementId = milestone.agreement_id as string;
   const amount = BigInt(String(milestone.amount));
@@ -139,7 +143,7 @@ export async function releaseMilestone(deps: ReleaserDeps, milestoneId: string):
     .from("milestones")
     .update({ status: "converting" })
     .eq("id", milestoneId)
-    .eq("status", "approved")
+    .in("status", PAYABLE)
     .select("id");
   if (claim.error) fail("reservar el hito", claim.error);
   if (!claim.data?.length) {
@@ -176,7 +180,7 @@ export async function releaseMilestone(deps: ReleaserDeps, milestoneId: string):
   } catch {
     return { kind: "in_progress" };
   }
-  return settle(db, movementId, milestoneId, txHash, receipt.status, amount);
+  return settle(deps, movementId, milestoneId, txHash, receipt.status, amount);
 }
 
 /** Hito en `converting`: sin tx_hash no se reenvía nada; con hash se mira la cadena. */
@@ -211,17 +215,18 @@ async function reconcile(deps: ReleaserDeps, milestoneId: string): Promise<Relea
   const hash = movement.tx_hash as Hash;
   const receipt = await chain.getReceipt(hash).catch(() => null);
   if (!receipt) return { kind: "in_progress" };
-  return settle(db, movement.id as string, milestoneId, hash, receipt.status, BigInt(String(movement.amount_out)));
+  return settle(deps, movement.id as string, milestoneId, hash, receipt.status, BigInt(String(movement.amount_out)));
 }
 
 async function settle(
-  db: SupabaseClient,
+  deps: ReleaserDeps,
   movementId: string,
   milestoneId: string,
   txHash: Hash,
   status: "success" | "reverted",
   amount: bigint,
 ): Promise<ReleaseResult> {
+  const { db } = deps;
   if (status === "reverted") {
     await failAndReopen(db, movementId, milestoneId);
     return { kind: "tx_failed", reason: "La transacción se revirtió" };
@@ -234,8 +239,20 @@ async function settle(
     .eq("id", milestoneId)
     .eq("status", "converting");
   if (paid.error) fail("marcar el hito como pagado", paid.error);
-  // TODO: llamar al aviso "hito pagado" de lib/notify/events.ts cuando exista (#42).
+  await announcePaid(deps, milestoneId);
   return { kind: "paid", txHash, amount: amount.toString() };
+}
+
+/** Avisa que el hito se pagó. El pago ya está hecho: si el aviso falla, solo se anota en el log. */
+async function announcePaid(deps: ReleaserDeps, milestoneId: string) {
+  if (!deps.onPaid) return;
+  try {
+    const res = await deps.db.from("milestones").select("agreement_id").eq("id", milestoneId).single();
+    if (res.error) throw new Error(res.error.message);
+    await deps.onPaid((res.data as Row).agreement_id as string, milestoneId);
+  } catch (error) {
+    console.error("[releaser] no se pudo avisar el pago", milestoneId, error instanceof Error ? error.message : error);
+  }
 }
 
 async function markFailed(db: SupabaseClient, movementId: string) {
@@ -261,7 +278,7 @@ export async function releaseApproved(deps: ReleaserDeps): Promise<ReleaseSummar
   const list = await deps.db
     .from("milestones")
     .select("id")
-    .in("status", ["approved", "converting"])
+    .in("status", [...PAYABLE, "converting"])
     .order("approved_at", { ascending: true });
   if (list.error) fail("buscar hitos aprobados", list.error);
   const summary: ReleaseSummary = { processed: 0, paid: 0, results: {} };

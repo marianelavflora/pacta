@@ -6,6 +6,7 @@ import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
 import { releaseApproved, releaseMilestone } from "@/agent/releaser";
+import { runReminders } from "@/agent/reminders";
 import { getReleaserDeps } from "@/agent/releaser-server";
 
 function isAuthorized(request: Request): boolean {
@@ -24,11 +25,11 @@ const bodySchema = z.object({ milestoneId: z.string().uuid().optional() });
 async function handle(milestoneId?: string) {
   try {
     const deps = getReleaserDeps();
-    return Response.json(
-      milestoneId
-        ? await releaseMilestone(deps, milestoneId)
-        : await releaseApproved(deps),
-    );
+    if (milestoneId) return Response.json(await releaseMilestone(deps, milestoneId));
+    // Barrido completo: primero los recordatorios (los hitos que pasan a `expired` se pagan en
+    // este mismo barrido), después los pagos.
+    const reminders = await runReminders(deps.db);
+    return Response.json({ reminders, ...(await releaseApproved(deps)) });
   } catch (error) {
     console.error("/api/cron/releaser", error);
     return Response.json(
