@@ -7,13 +7,13 @@ describe("direcciones de las páginas", () => {
   });
 
   it("arma la vista del cliente, la de la freelancer y el recibo", () => {
-    expect(clientUrl("abc123")).toBe("/a/abc123");
-    expect(freelancerUrl("abc123")).toBe("/f/abc123");
+    expect(clientUrl("abc123")).toBe("/cliente/abc123");
+    expect(freelancerUrl("abc123")).toBe("/freelancer/abc123");
     expect(receiptUrl("m-42")).toBe("/recibo/m-42");
   });
 
   it("escapa caracteres raros y saca espacios de los costados", () => {
-    expect(clientUrl(" a b/c ")).toBe("/a/a%20b%2Fc");
+    expect(clientUrl(" a b/c ")).toBe("/cliente/a%20b%2Fc");
   });
 
   it("no arma una dirección sin id", () => {

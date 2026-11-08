@@ -1,6 +1,6 @@
 /**
  * Direcciones de las páginas de Pactá, en un solo lugar.
- * Usalas en vez de escribir "/a/..." a mano: si cambia una ruta,
+ * Usalas en vez de escribir "/cliente/..." a mano: si cambia una ruta,
  * se cambia acá y listo (mapa del código en AGENTS.md).
  */
 export const routes = {
@@ -15,14 +15,14 @@ function withId(prefix: string, id: string): string {
   return `${prefix}/${encodeURIComponent(clean)}`;
 }
 
-/** Vista del cliente de un acuerdo: `/a/<publicId>`. */
+/** Vista del cliente de un acuerdo: `/cliente/<publicId>`. */
 export function clientUrl(publicId: string): string {
-  return withId("/a", publicId);
+  return withId("/cliente", publicId);
 }
 
-/** Vista de la freelancer de un acuerdo: `/f/<publicId>`. */
+/** Vista de la freelancer de un acuerdo: `/freelancer/<publicId>`. */
 export function freelancerUrl(publicId: string): string {
-  return withId("/f", publicId);
+  return withId("/freelancer", publicId);
 }
 
 /** Recibo de un hito: `/recibo/<milestoneId>`. */

@@ -21,10 +21,10 @@ export const metadata: Metadata = {
 };
 
 /**
- * Vista del cliente (boceto 05): `/a/<publicId>`.
+ * Vista del cliente (boceto 05): `/cliente/<publicId>`.
  * PAC-19: datos del acuerdo y sus hitos. Faltan: depositar (PAC-20), cotización (PAC-33).
  */
-export default function ClientAgreementPage({ params }: PageProps<"/a/[id]">) {
+export default function ClientAgreementPage({ params }: PageProps<"/cliente/[id]">) {
   const id = params.then((p) => p.id);
 
   return (

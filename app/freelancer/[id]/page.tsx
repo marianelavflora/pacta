@@ -23,13 +23,11 @@ export const metadata: Metadata = {
 };
 
 /**
- * Vista de la freelancer (boceto 07-08): `/f/<publicId>`.
+ * Vista de la freelancer (boceto 07-08): `/freelancer/<publicId>`.
  * - PAC-23 (#23): lista de hitos y botón para entregar (usa la API de PAC-22).
  * - PAC-27 (#27): link al recibo de cada hito pagado (`receiptUrl` en lib/routes.ts).
  */
-export default function FreelancerAgreementPage({
-  params,
-}: PageProps<"/f/[id]">) {
+export default function FreelancerAgreementPage({ params }: PageProps<"/freelancer/[id]">) {
   const id = params.then((p) => p.id);
 
   return (

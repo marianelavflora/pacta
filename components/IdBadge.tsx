@@ -21,7 +21,7 @@ function BadgeShell({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Chip con el id que viene en la dirección (por ejemplo `/a/abc123` → "Acuerdo abc123").
+ * Chip con el id que viene en la dirección (por ejemplo `/cliente/abc123` → "Acuerdo abc123").
  * Va dentro de `<Suspense>` para que el resto de la página se pueda armar antes
  * de saber el id (Cache Components de Next 16).
  */
