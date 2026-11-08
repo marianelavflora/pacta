@@ -7,6 +7,23 @@ import { shortAddress } from "@/lib/chain/address";
 
 type EthereumWindow = Window & { ethereum?: { isMiniPay?: boolean } };
 
+const METAMASK_DOWNLOAD = "https://metamask.io/download/";
+
+/** Abre esta misma página dentro del navegador de la app de MetaMask (celular). */
+function metamaskDeepLink(): string {
+  const { host, pathname, search } = window.location;
+  return `https://metamask.app.link/dapp/${host}${pathname}${search}`;
+}
+
+function isMobileBrowser(): boolean {
+  return /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function isProviderNotFound(error: Error): boolean {
+  const text = `${error.name} ${error.message}`.toLowerCase();
+  return text.includes("providernotfound") || text.includes("provider not found");
+}
+
 function connectErrorMessage(error: Error): string {
   console.error("[ConnectButton] connect error:", error);
   const text = `${error.name} ${error.message}`.toLowerCase();
@@ -35,11 +52,15 @@ export function ConnectButton() {
   const connectors = useConnectors();
   const { disconnect } = useDisconnect();
   const [isMiniPay, setIsMiniPay] = useState(false);
+  // Link para abrir Pactá en la app de MetaMask. Solo en celular y sin billetera inyectada.
+  const [mobileLink, setMobileLink] = useState<string | null>(null);
 
   useEffect(() => {
-    // Detectar MiniPay solo se puede en el navegador.
+    // Detectar MiniPay y el celular solo se puede en el navegador.
+    const ethereum = (window as EthereumWindow).ethereum;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if ((window as EthereumWindow).ethereum?.isMiniPay) setIsMiniPay(true);
+    if (ethereum?.isMiniPay) setIsMiniPay(true);
+    if (!ethereum && isMobileBrowser()) setMobileLink(metamaskDeepLink());
   }, []);
 
   const connector = connectors[0];
@@ -68,6 +89,19 @@ export function ConnectButton() {
     );
   }
 
+  if (mobileLink) {
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <Button asChild size="sm">
+          <a href={mobileLink}>Abrir en MetaMask</a>
+        </Button>
+        <p className="max-w-56 text-right text-xs text-muted-foreground">
+          Desde el celular, abrí Pactá dentro de la app de MetaMask.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-end gap-1">
       <Button
@@ -81,6 +115,16 @@ export function ConnectButton() {
         <p role="alert" className="text-xs text-destructive">
           {connectErrorMessage(error)}
         </p>
+      )}
+      {error && isProviderNotFound(error) && (
+        <a
+          href={METAMASK_DOWNLOAD}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs underline underline-offset-2"
+        >
+          Instalar MetaMask
+        </a>
       )}
     </div>
   );
