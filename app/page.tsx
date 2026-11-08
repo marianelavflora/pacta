@@ -32,6 +32,13 @@ export default function Home() {
           </Button>
         </div>
         <p className="text-sm text-muted-foreground">
+          ¿No sabés cómo dividir el trabajo en hitos?{" "}
+          <Link href="/nuevo#intake" className="font-semibold text-foreground underline underline-offset-2">
+            Contalo con tus palabras
+          </Link>{" "}
+          y lo armamos por vos.
+        </p>
+        <p className="text-sm text-muted-foreground">
           Para usar Pactá necesitás una billetera:{" "}
           <strong className="font-semibold text-foreground">MetaMask o MiniPay</strong> es
           obligatorio para crear, depositar y aprobar.
