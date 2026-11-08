@@ -9,6 +9,11 @@ export const WELCOME_MESSAGE =
 export const EXAMPLE_TEXT =
   "Logo y manual de marca para una agencia de São Paulo, 3 entregas en un mes, 1500 reales en total.";
 
+export const ALL_SET_MESSAGE = "¡Ya tengo todo lo que necesito!";
+
+export const CONFIRM_MESSAGE =
+  "Esto es lo que voy a enviar. ¿Genero el acuerdo?";
+
 export const FAILURE_MESSAGE =
   "No pude armar los hitos con ese texto. Podés contármelo de otra forma o cargarlos a mano.";
 
