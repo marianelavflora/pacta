@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isAddress, parseAbiItem, parseEventLogs, type Address, type Hash, type Log } from "viem";
 
 import type { TokenSymbol } from "@/lib/chain/tokens";
+import { onAgreementFunded } from "@/lib/notify/events";
 
 const transferEvent = parseAbiItem(
   "event Transfer(address indexed from, address indexed to, uint256 value)",
@@ -208,7 +209,7 @@ async function fundMilestones(db: SupabaseClient, agreementId: string, agreement
       .eq("id", agreementId)
       .eq("status", "pending");
     if (upd.error) fail("marcar el acuerdo como financiado", upd.error);
-    // TODO: llamar a onAgreementFunded (lib/notify/events.ts) cuando exista (#42).
+    await onAgreementFunded(db, agreementId); // nunca tira error: avisar es secundario
   }
   return { fundedMilestones, agreementFunded };
 }

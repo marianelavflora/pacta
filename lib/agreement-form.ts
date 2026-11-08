@@ -35,7 +35,7 @@ export const emptyDetails: DetailsValues = {
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function isContact(value: string): boolean {
+export function isContact(value: string): boolean {
   if (EMAIL.test(value)) return true;
   const digits = value.replace(/[\s()+-]/g, "");
   return /^\d{8,15}$/.test(digits);

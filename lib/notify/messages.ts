@@ -1,82 +1,59 @@
-// Textos de los avisos de Pactá (PAC-09 y PAC-40).
-//
-// Un texto por cambio de estado del hito. Los usa Telegram (`telegram.ts`) y
-// después el mail de respaldo (PAC-41), así los dos dicen lo mismo.
-// Los huecos van entre llaves: `{freelancer}` se reemplaza por el nombre, etc.
+// Textos de los avisos (PAC-42): uno por cambio de estado. Castellano rioplatense y simple.
+// Funciones puras: reciben datos ya armados y devuelven asunto y cuerpo. No mandan nada.
 
-export const TEMPLATE_NAMES = [
-  "deposit_received",
-  "milestone_delivered",
-  "review_reminder",
-  "milestone_approved",
-  "auto_release",
-  "milestone_paid",
-] as const;
+export type NotifyEvent =
+  | "deposit_received"
+  | "milestone_delivered"
+  | "review_reminder"
+  | "milestone_approved"
+  | "auto_release"
+  | "milestone_paid";
 
-export type TemplateName = (typeof TEMPLATE_NAMES)[number];
-
-type Template = {
-  /** A quién le llega. */
-  to: "freelancer" | "client";
-  /** Estado del hito que dispara el aviso. */
-  status: "funded" | "delivered" | "reminded" | "approved" | "expired" | "paid";
-  /** Texto con huecos `{nombre}`. */
-  text: string;
+export type MessageData = {
+  /** Nombre de quien recibe el aviso. */
+  recipientName: string;
+  /** Título del acuerdo. */
+  agreementTitle: string;
+  /** Título del hito, si el aviso es de un hito. */
+  milestoneTitle?: string;
+  /** Monto ya formateado para leer, por ejemplo "R$ 600". */
+  amount?: string;
+  /** Link a la pantalla donde la persona puede actuar o ver el estado. */
+  link: string;
 };
 
-export const TEMPLATES: Record<TemplateName, Template> = {
-  deposit_received: {
-    to: "freelancer",
-    status: "funded",
-    text: 'Hola {freelancer}, {client} depositó {amount} para el acuerdo "{agreement}". La plata ya está asegurada y podés arrancar. Ver el acuerdo: {link}',
-  },
-  milestone_delivered: {
-    to: "client",
-    status: "delivered",
-    text: 'Hola {client}, {freelancer} entregó "{milestone}". Revisalo y aprobalo acá: {link}. Si no respondés en 6 días, el pago se libera solo.',
-  },
-  review_reminder: {
-    to: "client",
-    status: "reminded",
-    text: 'Hola {client}, {freelancer} te entregó "{milestone}" hace 3 días. Revisalo y aprobalo acá: {link}. Si no respondés en 3 días, el pago se libera solo.',
-  },
-  milestone_approved: {
-    to: "freelancer",
-    status: "approved",
-    text: 'Hola {freelancer}, {client} aprobó "{milestone}". Estamos preparando tu pago de {amount} y te avisamos cuando llegue.',
-  },
-  auto_release: {
-    to: "client",
-    status: "expired",
-    text: 'Hola {client}, como no hubo respuesta, liberamos el pago de "{milestone}" a {freelancer}. Ver el recibo: {link}',
-  },
-  milestone_paid: {
-    to: "freelancer",
-    status: "paid",
-    text: 'Hola {freelancer}, te pagamos "{milestone}": recibiste {amount} con un tipo de cambio de {rate}. Ver el recibo: {link}',
-  },
+export type Message = { subject: string; body: string };
+
+const milestoneOf = (data: MessageData) =>
+  data.milestoneTitle ? `el hito "${data.milestoneTitle}"` : "un hito";
+
+const BUILDERS: Record<NotifyEvent, (data: MessageData) => Message> = {
+  deposit_received: (d) => ({
+    subject: `Recibimos el depósito de "${d.agreementTitle}"`,
+    body: `Hola ${d.recipientName}, recibimos el depósito${d.amount ? ` de ${d.amount}` : ""} del acuerdo "${d.agreementTitle}". La plata queda guardada hasta que apruebes cada hito.\n\nMirá el estado acá: ${d.link}`,
+  }),
+  milestone_delivered: (d) => ({
+    subject: `Hay un hito para revisar: ${d.milestoneTitle ?? d.agreementTitle}`,
+    body: `Hola ${d.recipientName}, entregaron ${milestoneOf(d)} del acuerdo "${d.agreementTitle}". Revisalo y, si está bien, aprobalo para que se pague.\n\nRevisalo acá: ${d.link}`,
+  }),
+  review_reminder: (d) => ({
+    subject: `Te falta revisar ${milestoneOf(d)}`,
+    body: `Hola ${d.recipientName}, todavía no revisaste ${milestoneOf(d)} del acuerdo "${d.agreementTitle}". Si no respondés en 3 días, lo liberamos solo y se le paga a quien lo entregó.\n\nRevisalo acá: ${d.link}`,
+  }),
+  milestone_approved: (d) => ({
+    subject: `Aprobaron ${milestoneOf(d)}`,
+    body: `Hola ${d.recipientName}, aprobaron ${milestoneOf(d)} del acuerdo "${d.agreementTitle}". En unos minutos te llega el pago${d.amount ? ` de ${d.amount}` : ""}.\n\nSeguilo acá: ${d.link}`,
+  }),
+  auto_release: (d) => ({
+    subject: `Liberamos ${milestoneOf(d)} sin respuesta`,
+    body: `Hola ${d.recipientName}, pasaron 6 días sin respuesta y liberamos ${milestoneOf(d)} del acuerdo "${d.agreementTitle}", como estaba acordado. Se paga en unos minutos.\n\nMirá el detalle: ${d.link}`,
+  }),
+  milestone_paid: (d) => ({
+    subject: `Pago realizado: ${d.milestoneTitle ?? d.agreementTitle}`,
+    body: `Hola ${d.recipientName}, se pagó ${milestoneOf(d)} del acuerdo "${d.agreementTitle}"${d.amount ? ` (${d.amount})` : ""}.\n\nAbrí el recibo: ${d.link}`,
+  }),
 };
 
-/** Huecos que pide una plantilla, en el orden en que aparecen. */
-export function templateFields(name: TemplateName): string[] {
-  return [...TEMPLATES[name].text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
-}
-
-/**
- * Completa una plantilla con los datos. Si falta un dato devuelve `null`
- * en vez de mandar un mensaje con `{huecos}` sin llenar.
- */
-export function renderMessage(name: TemplateName, data: Record<string, string>): string | null {
-  const template = TEMPLATES[name];
-  if (!template) return null;
-  let missing = false;
-  const text = template.text.replace(/\{(\w+)\}/g, (_, key: string) => {
-    const value = data[key];
-    if (typeof value !== "string" || value.trim() === "") {
-      missing = true;
-      return "";
-    }
-    return value.trim();
-  });
-  return missing ? null : text;
+export function buildMessage(event: NotifyEvent, data: MessageData): Message {
+  return BUILDERS[event](data);
 }

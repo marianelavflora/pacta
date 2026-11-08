@@ -13,7 +13,7 @@ Pactá avisa a la freelancer y al cliente cada vez que cambia el estado de un hi
 
 1. La persona abre el link del bot y toca **Iniciar**.
 2. Telegram le asigna un `chat_id` a esa conversación, y Pactá lo guarda.
-3. Cuando cambia el estado de un hito, Pactá llama a `sendTelegram(chatId, aviso, datos)` y el bot le manda el mensaje.
+3. Cuando cambia el estado de un hito, `notify` prueba los canales en orden: primero **Telegram** y, si no sale (la persona no se suscribió o Telegram falla), el **mail**.
 
 Un bot de Telegram no puede escribirle a un número de teléfono: solo le escribe a quien tocó **Iniciar**. Por eso se guarda el `chat_id`, no el teléfono.
 
@@ -27,10 +27,11 @@ Un bot de Telegram no puede escribirle a un número de teléfono: solo le escrib
 
 | Archivo | Qué hace |
 |---|---|
-| `lib/notify/messages.ts` | Texto de cada aviso. El mail de respaldo usa los mismos. |
-| `lib/notify/telegram.ts` | `sendTelegram`: completa el texto y lo manda. Devuelve `{ ok: true }` o `{ ok: false, error }`. |
+| `lib/notify/messages.ts` | Texto de cada aviso (asunto y cuerpo). Telegram y el mail usan los mismos. |
+| `lib/notify/telegram.ts` | `sendTelegram`: manda el aviso por la Bot API. Devuelve `sent`, `skipped` o `failed`, igual que el mail. |
+| `lib/notify/index.ts` | `notify` y los canales: `telegramChannel` primero, `emailChannel` de respaldo. |
 | `scripts/test-telegram.ts` | Manda los 6 avisos a un chat de prueba. |
-| `tests/notify/messages.test.ts` | Tests sin red, con un Telegram simulado. |
+| `tests/notify/telegram.test.ts` | Tests sin red, con un Telegram simulado. |
 
 ## Variable de entorno
 
@@ -42,18 +43,16 @@ Un bot de Telegram no puede escribirle a un número de teléfono: solo le escrib
 
 | Aviso | Cuándo (estado del hito) | A quién |
 |---|---|---|
-| `deposit_received` | El cliente depositó (`funded`) | Freelancer |
+| `deposit_received` | El cliente depositó (`funded`) | Cliente y freelancer |
 | `milestone_delivered` | La freelancer entregó (`delivered`) | Cliente |
 | `review_reminder` | Día 3 sin respuesta (`reminded`) | Cliente |
 | `milestone_approved` | El cliente aprobó (`approved`) | Freelancer |
-| `auto_release` | Día 6 sin respuesta, se libera solo (`expired`) | Cliente |
+| `auto_release` | Día 6 sin respuesta, se libera solo (`expired`) | Cliente y freelancer |
 | `milestone_paid` | Se pagó el hito (`paid`) | Freelancer |
 
 Ejemplo (`review_reminder`):
 
-> Hola Agencia Sol, Sofía te entregó "Entrega 1: bocetos del logo" hace 3 días. Revisalo y aprobalo acá: https://… Si no respondés en 3 días, el pago se libera solo.
-
-Si falta algún dato, el mensaje no se manda: así nunca llega un aviso a medio completar.
+> Hola Agencia Sol, todavía no revisaste el hito "Entrega 1: bocetos del logo" del acuerdo "Logo y manual de marca". Si no respondés en 3 días, lo liberamos solo y se le paga a quien lo entregó.
 
 ## Cómo probarlo
 
@@ -72,7 +71,6 @@ Los tests automáticos no necesitan el token: `npm test`.
 
 ## Próximos pasos
 
-- Guardar el `chat_id` en la tabla `users`.
+- Guardar el `chat_id` en la tabla `users` y pasarlo como `telegramChatId` en `lib/notify/events.ts`. Hasta entonces, los avisos salen por mail.
 - Una ruta que reciba el **Iniciar** del bot (webhook) y guarde el `chat_id`.
-- Mandar el aviso en cada cambio de estado del hito, con el mail como respaldo (PAC-42).
 - Un botón "Recibir avisos por Telegram" en las pantallas.

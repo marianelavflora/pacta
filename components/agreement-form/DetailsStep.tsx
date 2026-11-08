@@ -41,7 +41,11 @@ function Field({
         {help}
       </p>
       {error && (
-        <p id={`${id}-error`} role="alert" className="text-sm font-medium text-destructive">
+        <p
+          id={`${id}-error`}
+          role="alert"
+          className="text-sm font-medium text-destructive"
+        >
           {error}
         </p>
       )}
@@ -54,12 +58,19 @@ function describe(id: string, error?: string) {
 }
 
 export function DetailsStep({ values, errors, onChange }: Props) {
-  const set = <K extends keyof DetailsValues>(key: K, value: DetailsValues[K]) =>
-    onChange({ ...values, [key]: value });
+  const set = <K extends keyof DetailsValues>(
+    key: K,
+    value: DetailsValues[K],
+  ) => onChange({ ...values, [key]: value });
 
   return (
     <div className="flex flex-col gap-5">
-      <Field id="title" label="Título" help="Un nombre corto para el trabajo." error={errors.title}>
+      <Field
+        id="title"
+        label="Título"
+        help="Un nombre corto para el trabajo."
+        error={errors.title}
+      >
         <Input
           id="title"
           value={values.title}

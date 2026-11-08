@@ -2,6 +2,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { verifyTypedData, type Hex } from "viem";
 import { buildApprovalTypedData } from "@/lib/chain/approval";
+import { onMilestoneApproved } from "@/lib/notify/events";
 
 export type ApprovedMilestone = {
   id: string;
@@ -97,6 +98,7 @@ export async function approveMilestone(
     .maybeSingle();
   if (updated.error) fail("aprobar el hito", updated.error);
   if (updated.data) {
+    await onMilestoneApproved(db, row.agreement_id as string, milestoneId); // nunca tira error
     return { kind: "approved", milestone: toPublic(updated.data as Record<string, unknown>) };
   }
 

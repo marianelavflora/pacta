@@ -166,7 +166,7 @@ describe("createAgreement", () => {
     expect(created).toEqual({
       id: agreement.id,
       publicId: agreement.public_id,
-      clientUrl: `/a/${agreement.public_id}`,
+      clientUrl: `/cliente/${agreement.public_id}`,
       totalAmount: 2000000000000000000000n,
     });
   });
@@ -223,7 +223,7 @@ describe("POST /api/agreements", () => {
     expect(json).toEqual({
       id: db.tables.agreements[0].id,
       publicId: db.tables.agreements[0].public_id,
-      clientUrl: `/a/${db.tables.agreements[0].public_id}`,
+      clientUrl: `/cliente/${db.tables.agreements[0].public_id}`,
       totalAmount: "2000000000000000000000",
     });
   });

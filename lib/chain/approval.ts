@@ -19,7 +19,7 @@ export const approvalTypes = {
 
 export type ApprovalInput = {
   chainId: number;
-  /** `public_id` del acuerdo (el de la URL /a/<id>). */
+  /** `public_id` del acuerdo (el de la URL /cliente/<id>). */
   agreementPublicId: string;
   /** UUID del hito. */
   milestoneId: string;

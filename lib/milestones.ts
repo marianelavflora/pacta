@@ -1,5 +1,6 @@
 // Entregar un hito (PAC-22). Recibe la base por parámetro para probarlo sin red.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { onMilestoneDelivered } from "@/lib/notify/events";
 import type { DeliverMilestoneInput } from "@/lib/validation/milestone";
 
 export type DeliveredMilestone = {
@@ -86,6 +87,7 @@ export async function deliverMilestone(
     .maybeSingle();
   if (updated.error) fail("entregar el hito", updated.error);
   if (updated.data) {
+    await onMilestoneDelivered(db, row.agreement_id as string, milestoneId); // nunca tira error
     return { kind: "delivered", milestone: toPublic(updated.data as Record<string, unknown>) };
   }
 

@@ -42,6 +42,12 @@ describe("depósito con tag", () => {
   it("traduce errores de la billetera", () => {
     expect(friendlyDepositError({ shortMessage: "User rejected the request." })).toMatch(/Cancelaste/);
     expect(friendlyDepositError(new Error("transfer amount exceeds balance"))).toMatch(/saldo/);
+    expect(
+      friendlyDepositError(new Error("The current chain of the connector (1) does not match the connection's chain (11142220).")),
+    ).toMatch(/otra red/);
+    expect(
+      friendlyDepositError(new Error("The requested method and/or account has not been authorized by the user.")),
+    ).toMatch(/permiso/);
     expect(friendlyDepositError(new Error("boom"))).toMatch(/No pudimos/);
   });
 });
