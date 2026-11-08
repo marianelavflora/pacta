@@ -36,6 +36,7 @@ type CreatedAgreement = {
   clientContact: string;
   milestoneCount: number;
   total: string;
+  totalUnits: string;
 };
 
 /**
@@ -118,6 +119,7 @@ export function AgreementForm() {
         clientContact: details.clientContact,
         milestoneCount: rows.length,
         total: `${currencySymbol(details.clientCurrency)} ${formatUnits(totalUnits(rows))}`,
+        totalUnits: totalUnits(rows).toString(),
       });
     } catch {
       setSubmitError(
@@ -134,7 +136,11 @@ export function AgreementForm() {
         <p className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
           Paso 3 de {TOTAL_STEPS}
         </p>
-        <SubmitStep {...created} clientCurrency={details.clientCurrency} />
+        <SubmitStep
+          {...created}
+          clientCurrency={details.clientCurrency}
+          payoutCurrency={details.payoutCurrency || "wARS"}
+        />
       </div>
     );
   }

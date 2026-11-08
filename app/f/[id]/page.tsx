@@ -8,6 +8,7 @@ import { IdBadge } from "@/components/IdBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { DeliverDialog } from "@/components/DeliverDialog";
+import { TodayRateCard } from "@/components/Quote";
 import { Badge } from "@/components/ui/badge";
 import { getAgreementByPublicId } from "@/lib/agreements";
 import { formatUnits } from "@/lib/amounts";
@@ -169,6 +170,10 @@ async function Milestones({ id }: { id: Promise<string> }) {
           </li>
         ))}
       </ul>
+      <TodayRateCard
+        from={agreement.clientCurrency}
+        to={agreement.payoutCurrency}
+      />
     </section>
   );
 }
