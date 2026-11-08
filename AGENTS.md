@@ -56,7 +56,7 @@ Si una persona del equipo te pide ayuda con un ticket, explicá lo que hacés en
 | Identidad | ERC-8004 (direcciones por red en *Referencias técnicas*) |
 | Monedas | wARS, wBRL, wMXN de Ripio (18 decimales). En testnet, tARS y tBRL de prueba si no existen |
 | FX | Textile + un DEX de Celo de respaldo (ver `docs/fx.md` cuando exista) |
-| IA | Claude API (intake de hitos y resúmenes) |
+| IA | Google Gemini API, capa gratuita (intake de hitos; ver Estado y decisiones) |
 | Base de datos | Supabase (Postgres) |
 | Tareas programadas | Vercel Cron |
 | Avisos | WhatsApp con Twilio (ver `docs/whatsapp.md`) + mail con Resend de respaldo. Nada de librerías no oficiales de WhatsApp |
@@ -139,7 +139,7 @@ Dónde va cada cosa. Los tickets usan estos nombres; si cambiás uno, actualizá
 | `scripts/` | Scripts sueltos |
 | `public/` | Logos (`public/brand/`) y `agent-card.json` |
 
-Variables de entorno clave: `NEXT_PUBLIC_CHAIN` (`celo-sepolia` o `celo`), `NEXT_PUBLIC_ATTRIBUTION_TAG`, `AGENT_PRIVATE_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `TWILIO_*`, `RESEND_API_KEY`, `CRON_SECRET`, `TIME_UNIT` (`days` o `minutes` para probar plazos rápido). Todas listadas en `.env.example`, sin valores.
+Variables de entorno clave: `NEXT_PUBLIC_CHAIN` (`celo-sepolia` o `celo`), `NEXT_PUBLIC_ATTRIBUTION_TAG`, `AGENT_PRIVATE_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `INTAKE_MODEL` (opcional), `TWILIO_*`, `RESEND_API_KEY`, `CRON_SECRET`, `TIME_UNIT` (`days` o `minutes` para probar plazos rápido). Todas listadas en `.env.example`, sin valores.
 
 ## Cómo trabajamos
 
@@ -200,6 +200,7 @@ Cuando un agente coordina a otros para avanzar varios tickets en paralelo, convi
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
+- 2026-11-08 · IA del intake (cambio de decisión): usamos **Google Gemini** (capa gratuita, modelo `gemini-3.1-flash-lite` (en las pruebas contestó en 1 a 7 s; `gemini-3.8-flash` tardó más de 45 s), cambiable con `INTAKE_MODEL`; corta a los 20 s) en vez de la API de Claude, para no pagar tokens durante la hackathon. Cuidado: en la capa gratuita Google puede usar lo que enviamos para mejorar sus productos; por eso el pedido va con `store: false` y no se manda nada personal más allá del texto del trabajo. Variable: `GEMINI_API_KEY` (solo servidor). `POST /api/intake` con `{ text }` devuelve `{ title?, clientCurrency?, milestones: [{ title, amount, reviewDays }], notes }`. La IA solo propone: no crea el acuerdo. Si el texto no trae el monto de un hito, `amount` vuelve `""` y `notes` avisa (nunca se inventa). Respuesta inválida: reintenta una vez; después 422. Sin `GEMINI_API_KEY`: 503 y el formulario manual sigue andando. Código en `lib/intake/`.
 - 2026-11-01 · WhatsApp (PAC-09): usamos **Twilio** (sandbox para probar, Content Template Builder para las plantillas). Seis plantillas Utility en castellano: `deposit_received`, `milestone_delivered`, `review_reminder`, `milestone_approved`, `auto_release`, `milestone_paid`. Textos, IDs y estado en `docs/whatsapp.md`.
 - 2026-10-31 · Aprobar un hito (PAC-25): el cliente firma EIP-712 `Approval` (dominio `{ name: "Pactá", version: "1", chainId }`; campos `mensaje`, `acuerdo` (public_id), `hito` (uuid), `posicion`, `monto` (formateado), `moneda`), armado por `buildApprovalTypedData` en `lib/chain/approval.ts`; `POST /api/milestones/[id]/approve` con `{ signature }` verifica contra `client_wallet` y deja el hito en `approved` (no paga).
 
