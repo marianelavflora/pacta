@@ -5,7 +5,7 @@ import { Share2 } from "lucide-react";
 import { CopyLink } from "@/components/CopyLink";
 import { ApproxAmount } from "@/components/Quote";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { buildWhatsAppShareUrl } from "@/lib/agreement-form";
+import { buildTelegramShareUrl } from "@/lib/agreement-form";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -105,7 +105,7 @@ export function SubmitStep({
 
       <div className="flex flex-col gap-3">
         <a
-          href={buildWhatsAppShareUrl(title, link)}
+          href={buildTelegramShareUrl(title, link)}
           target="_blank"
           rel="noopener noreferrer"
           className={cn(
@@ -113,7 +113,7 @@ export function SubmitStep({
             "bg-success text-success-foreground hover:bg-success/90",
           )}
         >
-          Mandar por WhatsApp
+          Mandar por Telegram
         </a>
         <Button
           type="button"

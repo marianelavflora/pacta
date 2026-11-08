@@ -146,6 +146,6 @@ Office Hours: jueves 29 oct y 5 nov, 09:00 ART.
 | Pocos usuarios independientes | Se buscan desde el sprint 1. Meta: mínimo 10, ideal 20. |
 | Transacciones sin tag | Un único cliente de wallet con tag; revisar cada tx nueva en el explorador. |
 | Se filtra la clave del agente | Solo como secreto en Vercel, topes y saldo bajo. |
-| Meta tarda en aprobar plantillas de WhatsApp | Se usa Telegram, que no pide aprobar plantillas. |
+| Aprobación de plantillas para avisos automáticos | Se usa Telegram, que no pide aprobar plantillas. |
 | Poco tiempo en mainnet | El paso a mainnet del 4 nov no se mueve. |
 | Equipo nuevo en web3 | Tickets chicos, explicaciones simples, contrato como extra. |

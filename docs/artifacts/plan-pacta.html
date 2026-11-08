@@ -223,7 +223,7 @@ sequenceDiagram
       <tr><td class="id">RF-08</td><td>Al aprobarse, el agente cotiza, convierte si hace falta y paga el tramo a la freelancer.</td><td><span class="pill p-must">MVP</span></td></tr>
       <tr><td class="id">RF-09</td><td>Si el cliente no responde en 3 días, el agente le manda un segundo aviso y espera 3 días más. Si sigue sin responder (6 días en total desde la entrega), libera el hito solo. Los dos plazos se pueden configurar por acuerdo.</td><td><span class="pill p-must">MVP</span></td></tr>
       <tr><td class="id">RF-10</td><td>Cada pago genera un recibo: montos, tipo de cambio usado, comparación con la referencia y links a las transacciones.</td><td><span class="pill p-must">MVP</span></td></tr>
-      <tr><td class="id">RF-11</td><td>Avisos por WhatsApp (y mail de respaldo) en cada cambio de estado, con el link a la web para aprobar o depositar.</td><td><span class="pill p-nice">Deseable</span></td></tr>
+      <tr><td class="id">RF-11</td><td>Avisos por Telegram (y mail de respaldo) en cada cambio de estado, con el link a la web para aprobar o depositar.</td><td><span class="pill p-nice">Deseable</span></td></tr>
       <tr><td class="id">RF-12</td><td>El cliente puede "pausar" un hito si hay un problema. Para el MVP la disputa se resuelve a mano.</td><td><span class="pill p-nice">Deseable</span></td></tr>
       <tr><td class="id">RF-13</td><td>El agente resume la entrega para el cliente ("subió 3 archivos, cumple lo pactado en el hito 1").</td><td><span class="pill p-nice">Deseable</span></td></tr>
       <tr><td class="id">RF-14</td><td>Contrato de garantía en la cadena en lugar de la bóveda del agente.</td><td><span class="pill p-stretch">Extra</span></td></tr>
@@ -279,7 +279,7 @@ flowchart LR
   AG --> WAL[Wallet del agente con tag]
   WAL --> CELO[(Celo mainnet)]
   W -- depósito con tag --> CELO
-  AG --> N[Avisos WhatsApp / mail]
+  AG --> N[Avisos Telegram / mail]
 </pre>
   <div class="modules">
     <div class="mod"><div class="code">M1</div><h3>Acuerdos (intake)</h3><p>Convierte el texto libre de la freelancer en un acuerdo con hitos, montos y plazos usando Claude. Valida que los montos sumen.</p><div class="who">Mavi + Leila (prompts y casos)</div></div>
@@ -289,7 +289,7 @@ flowchart LR
     <div class="mod"><div class="code">M5</div><h3>Liberador</h3><p>El corazón del agente: revisa hitos aprobados o vencidos, convierte, paga una sola vez y deja todo registrado.</p><div class="who">Mavi</div></div>
     <div class="mod"><div class="code">M6</div><h3>Recibos y conciliación</h3><p>Cruza lo que dice la base con lo que pasó en la cadena y arma el recibo de cada pago.</p><div class="who">Leila (reglas) + Flor (pantalla)</div></div>
     <div class="mod"><div class="code">M7</div><h3>Identidad y tag</h3><p>Cliente de wallet único con el tag, registro ERC-8004 y agent card publicada.</p><div class="who">Mavi (fase 0)</div></div>
-    <div class="mod"><div class="code">M8</div><h3>Avisos</h3><p>Mensajes de WhatsApp (y mail de respaldo) en cada cambio de estado. Los avisos del día 3 y del día 6 usan plantillas aprobadas por Meta.</p><div class="who">Clau / quien quede libre</div></div>
+    <div class="mod"><div class="code">M8</div><h3>Avisos</h3><p>Mensajes de Telegram (y mail de respaldo) en cada cambio de estado, incluidos los avisos del día 3 y del día 6.</p><div class="who">Clau / quien quede libre</div></div>
   </div>
 </section>
 
@@ -310,7 +310,7 @@ flowchart LR
       <tr><td>IA</td><td>Claude API</td><td>Entender el texto libre, armar hitos y resumir entregas.</td></tr>
       <tr><td>Base de datos</td><td>Supabase (Postgres)</td><td>Gratis, con panel para ver los datos, y todas pueden mirarla sin instalar nada.</td></tr>
       <tr><td>Tareas programadas</td><td>Vercel Cron (o Supabase cron)</td><td>Despierta al agente cada pocos minutos para detectar depósitos y liberar hitos.</td></tr>
-      <tr><td>Avisos</td><td>WhatsApp Business Cloud API (Meta) o Twilio, y Resend (mail) de respaldo</td><td>WhatsApp es lo que usa todo el mundo en LatAm. Twilio tiene un sandbox para probar desde el día 1 mientras Meta aprueba las plantillas.</td></tr>
+      <tr><td>Avisos</td><td>Telegram (Bot API oficial) y Resend (mail) de respaldo</td><td>Telegram es gratis, no pide aprobar plantillas y el bot queda listo en minutos.</td></tr>
       <tr><td>Nodo RPC</td><td>Forno de Celo o Chainstack (3 meses gratis)</td><td>Para hablar con mainnet de forma estable.</td></tr>
       <tr><td>Extra</td><td>Solidity + Foundry + OpenZeppelin</td><td>Solo si hacemos el contrato de garantía.</td></tr>
     </tbody>
@@ -321,7 +321,7 @@ flowchart LR
   <h2>Datos y estados</h2>
   <h3>Entidades</h3>
   <ul>
-    <li><b>Usuaria</b>: wallet, nombre, número de WhatsApp (con su permiso para recibir avisos) y mail de respaldo.</li>
+    <li><b>Usuaria</b>: wallet, nombre, chat de Telegram (cuando toca "Iniciar" en el bot) y mail de respaldo.</li>
     <li><b>Acuerdo</b>: freelancer, cliente, descripción, moneda del cliente, moneda de cobro, total, estado, link público.</li>
     <li><b>Hito</b>: acuerdo, orden, título, monto, plazo de revisión en días, estado, link de entrega, fecha de entrega.</li>
     <li><b>Movimiento</b>: hito o acuerdo, tipo (depósito, conversión, pago, devolución), monedas, montos, tipo de cambio, hash de la transacción, estado.</li>
@@ -392,7 +392,7 @@ flowchart LR
           <li>Primer acuerdo real con wARS/wBRL de Ripio y un usuario independiente.</li>
           <li>Intake con Claude: del texto libre a hitos.</li>
           <li>Segundo aviso al día 3 y auto-liberación al día 6.</li>
-          <li>Avisos por WhatsApp (plantillas ya aprobadas) y mail de respaldo.</li>
+          <li>Avisos por Telegram y mail de respaldo.</li>
           <li>Office Hours jueves 5 para feedback.</li>
         </ul>
         <div class="done">Listo cuando: el flujo completo corre sin que nadie del equipo toque nada.</div>
@@ -455,7 +455,7 @@ flowchart LR
       <tr><td>Transacciones sin tag (no suman y no hay vuelta atrás)</td><td>Un único cliente de wallet con tag. Revisión de cada transacción nueva en el explorador.</td></tr>
       <tr><td>Se filtra la clave del agente</td><td>Solo como variable secreta en Vercel, topes por acuerdo y por día, y saldo bajo en la wallet.</td></tr>
       <tr><td>Equipo sin experiencia en web3</td><td>Fases cortas que terminan funcionando, explicaciones APB de cada paso, y el contrato queda como extra.</td></tr>
-      <tr><td>Meta tarda en aprobar la cuenta o las plantillas de WhatsApp</td><td>Pedir la cuenta de WhatsApp Business y las plantillas en la fase 0. Mientras tanto usamos el sandbox de Twilio, y el mail queda siempre de respaldo. Nada de librerías no oficiales, porque Meta bloquea el número.</td></tr>
+      <tr><td>La persona no se suscribe al bot de Telegram</td><td>El aviso sale igual por mail, que queda siempre de respaldo.</td></tr>
       <tr><td>Arrancar en testnet deja poco tiempo en mainnet</td><td>El paso a mainnet tiene fecha fija (mié 4 nov) y no se mueve. Si la fase 2 se atrasa, pasamos a mainnet igual con lo que funcione.</td></tr>
       <tr><td>Que nos coma el tiempo</td><td>Cada fase entrega algo usable. Si una se atrasa, se recorta la siguiente, nunca la entrega.</td></tr>
     </tbody>

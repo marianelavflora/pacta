@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAgreementPayload, buildWhatsAppShareUrl, emptyDetails } from "@/lib/agreement-form";
+import { buildAgreementPayload, buildTelegramShareUrl, emptyDetails } from "@/lib/agreement-form";
 
 const details = {
   ...emptyDetails,
@@ -23,10 +23,11 @@ describe("buildAgreementPayload", () => {
   });
 });
 
-describe("buildWhatsAppShareUrl", () => {
-  it("codifica el mensaje y trae el link", () => {
-    const url = buildWhatsAppShareUrl("Logo", "https://x.app/a/abc?x=1");
-    expect(url.startsWith("https://wa.me/?text=")).toBe(true);
-    expect(decodeURIComponent(url.split("text=")[1])).toContain("https://x.app/a/abc?x=1");
+describe("buildTelegramShareUrl", () => {
+  it("codifica el link y el mensaje para compartir por Telegram", () => {
+    const url = new URL(buildTelegramShareUrl("Logo", "https://x.app/cliente/abc?x=1"));
+    expect(url.origin + url.pathname).toBe("https://t.me/share/url");
+    expect(url.searchParams.get("url")).toBe("https://x.app/cliente/abc?x=1");
+    expect(url.searchParams.get("text")).toContain('"Logo"');
   });
 });

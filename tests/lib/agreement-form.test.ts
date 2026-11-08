@@ -38,14 +38,14 @@ describe("validación del formulario", () => {
   it("avisa los campos vacíos de los datos", () => {
     const errors = validateDetails(emptyDetails);
     expect(errors.title).toBeDefined();
-    expect(errors.clientContact).toBe("Necesitamos un WhatsApp o un mail");
+    expect(errors.clientContact).toBe("Necesitamos el mail del cliente");
     expect(errors.clientCurrency).toBeDefined();
     expect(errors.payoutCurrency).toBeUndefined();
   });
-  it("acepta mail o WhatsApp", () => {
+  it("acepta el mail del cliente y rechaza teléfonos", () => {
     const ok = { ...emptyDetails, title: "a", description: "b", clientCurrency: "wBRL" as const };
     expect(validateDetails({ ...ok, clientContact: "a@b.com" })).toEqual({});
-    expect(validateDetails({ ...ok, clientContact: "+55 11 91234 5678" })).toEqual({});
+    expect(validateDetails({ ...ok, clientContact: "+55 11 91234 5678" }).clientContact).toBeDefined();
     expect(validateDetails({ ...ok, clientContact: "hola" }).clientContact).toBeDefined();
   });
   it("no deja montos vacíos, en cero ni negativos", () => {

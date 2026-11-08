@@ -35,10 +35,9 @@ export const emptyDetails: DetailsValues = {
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** El contacto del cliente es su mail: los avisos le llegan por mail hasta que se suscriba al bot de Telegram. */
 export function isContact(value: string): boolean {
-  if (EMAIL.test(value)) return true;
-  const digits = value.replace(/[\s()+-]/g, "");
-  return /^\d{8,15}$/.test(digits);
+  return EMAIL.test(value);
 }
 
 export function validateDetails(values: DetailsValues): DetailsErrors {
@@ -46,8 +45,8 @@ export function validateDetails(values: DetailsValues): DetailsErrors {
   if (!values.title.trim()) errors.title = "Poné un título para el trabajo";
   if (!values.description.trim()) errors.description = "Contanos de qué se trata el trabajo";
   const contact = values.clientContact.trim();
-  if (!contact) errors.clientContact = "Necesitamos un WhatsApp o un mail";
-  else if (!isContact(contact)) errors.clientContact = "Revisá el WhatsApp o el mail: no parece válido";
+  if (!contact) errors.clientContact = "Necesitamos el mail del cliente";
+  else if (!isContact(contact)) errors.clientContact = "Revisá el mail: no parece válido";
   if (!CURRENCIES.includes(values.clientCurrency as Currency))
     errors.clientCurrency = "Elegí la moneda de tu cliente";
   if (!CURRENCIES.includes(values.payoutCurrency as Currency))
@@ -114,8 +113,8 @@ export function buildAgreementPayload(
   };
 }
 
-/** Link de WhatsApp con un mensaje listo para mandarle al cliente. */
-export function buildWhatsAppShareUrl(title: string, link: string): string {
-  const text = `Hola! Armé el acuerdo "${title.trim()}" en Pactá. Revisalo y depositá desde acá: ${link}`;
-  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+/** Link de Telegram para compartir el acuerdo con el cliente, con un mensaje listo. */
+export function buildTelegramShareUrl(title: string, link: string): string {
+  const text = `Hola! Armé el acuerdo "${title.trim()}" en Pactá. Revisalo y depositá desde acá:`;
+  return `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
 }

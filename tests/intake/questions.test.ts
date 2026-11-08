@@ -70,12 +70,12 @@ describe("applyAnswer", () => {
     expect(applyAnswer(q, "dólares", emptyDetails, [row()]).ok).toBe(false);
   });
 
-  it("valida el contacto (mail o WhatsApp)", () => {
+  it("valida el contacto (solo mail)", () => {
     const q = { kind: "clientContact", text: "" } as const;
     expect(applyAnswer(q, "no sé", complete, [row()]).ok).toBe(false);
     const mail = applyAnswer(q, " ana@mail.com ", complete, [row()]);
     expect(mail.ok && mail.details.clientContact).toBe("ana@mail.com");
-    expect(applyAnswer(q, "+54 9 11 2345 6789", complete, [row()]).ok).toBe(true);
+    expect(applyAnswer(q, "+54 9 11 2345 6789", complete, [row()]).ok).toBe(false);
   });
 
   it("guarda título del trabajo y título del hito", () => {

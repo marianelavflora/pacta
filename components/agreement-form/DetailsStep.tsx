@@ -99,14 +99,14 @@ export function DetailsStep({ values, errors, onChange }: Props) {
 
       <Field
         id="clientContact"
-        label="WhatsApp o mail del cliente"
+        label="Mail del cliente"
         help="Por acá le avisamos cuando haya algo para aprobar."
         error={errors.clientContact}
       >
         <Input
           id="clientContact"
           value={values.clientContact}
-          placeholder="+55 11 91234 5678 o cliente@mail.com"
+          placeholder="cliente@mail.com"
           autoComplete="off"
           aria-invalid={!!errors.clientContact}
           aria-describedby={describe("clientContact", errors.clientContact)}
