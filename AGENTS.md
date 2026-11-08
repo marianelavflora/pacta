@@ -200,6 +200,7 @@ Cuando un agente coordina a otros para avanzar varios tickets en paralelo, convi
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
+- 2026-11-08 · Intake con Claude (PAC-35): `POST /api/intake` con `{ text }` devuelve `{ title?, clientCurrency?, milestones: [{ title, amount, reviewDays }], notes }`. Claude (`claude-opus-5-5`, cambiable con `INTAKE_MODEL`) solo propone: no crea el acuerdo. Si el texto no trae el monto de un hito, `amount` vuelve `""` y `notes` avisa (nunca se inventa). Respuesta inválida: reintenta una vez; después 422. Sin `ANTHROPIC_API_KEY`: 503 y el formulario manual sigue andando. Código en `lib/intake/`.
 - 2026-11-01 · WhatsApp (PAC-09): usamos **Twilio** (sandbox para probar, Content Template Builder para las plantillas). Seis plantillas Utility en castellano: `deposit_received`, `milestone_delivered`, `review_reminder`, `milestone_approved`, `auto_release`, `milestone_paid`. Textos, IDs y estado en `docs/whatsapp.md`.
 - 2026-10-31 · Aprobar un hito (PAC-25): el cliente firma EIP-712 `Approval` (dominio `{ name: "Pactá", version: "1", chainId }`; campos `mensaje`, `acuerdo` (public_id), `hito` (uuid), `posicion`, `monto` (formateado), `moneda`), armado por `buildApprovalTypedData` en `lib/chain/approval.ts`; `POST /api/milestones/[id]/approve` con `{ signature }` verifica contra `client_wallet` y deja el hito en `approved` (no paga).
 
