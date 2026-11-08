@@ -18,7 +18,7 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 
 import { verifyTx } from "@celo/attribution-tags";
-import { createWalletClient, formatUnits, http, parseEther, parseUnits, type Hex } from "viem";
+import { createWalletClient, formatUnits, http, parseEther, parseUnits, type Address, type Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 const envFile = process.env.ENV_FILE ?? ".env.local";
@@ -124,12 +124,23 @@ async function main() {
   if (mintReceipt.status !== "success") {
     throw new Error(`Falló el mint de ${token.symbol} (¿la wallet del agente es dueña del token?): ${txUrl(mintHash)}`);
   }
-  const clientBal = (await publicClient.readContract({
-    address: token.address,
-    abi: erc20Abi,
-    functionName: "balanceOf",
-    args: [clientAccount.address],
-  })) as bigint;
+  // El RPC público a veces devuelve el saldo viejo justo después de una transacción:
+  // se vuelve a leer hasta que cambie (o se acaba el tiempo) para no dar falsos fallos.
+  const balanceOf = async (who: Address, until?: (balance: bigint) => boolean) => {
+    let balance = BigInt(0);
+    for (let i = 0; i < 12; i++) {
+      balance = (await publicClient.readContract({
+        address: token.address,
+        abi: erc20Abi,
+        functionName: "balanceOf",
+        args: [who],
+      })) as bigint;
+      if (!until || until(balance)) break;
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+    }
+    return balance;
+  };
+  const clientBal = await balanceOf(clientAccount.address, (b) => b === total);
   record("Cliente de prueba con CELO y tARS", clientBal === total, `${formatUnits(clientBal, 18)} ${token.symbol}`);
 
   // 2. La freelancer crea un acuerdo de 2 hitos.
@@ -220,12 +231,7 @@ async function main() {
   record("Cliente aprueba el hito 1 con su firma", approve.status === 200 && approve.body?.status === "approved", `status ${approve.status}, ${approve.body?.status ?? approve.body?.error}`);
 
   // 7. El liberador paga una sola vez.
-  const freelancerBefore = (await publicClient.readContract({
-    address: token.address,
-    abi: erc20Abi,
-    functionName: "balanceOf",
-    args: [freelancerAccount.address],
-  })) as bigint;
+  const freelancerBefore = await balanceOf(freelancerAccount.address);
   const pay = await api("/api/cron/releaser", { method: "POST", json: { milestoneId: first.id }, secret: true });
   record("El liberador paga el hito 1", pay.status === 200 && pay.body?.kind === "paid", `${pay.body?.kind}${pay.body?.reason ? `: ${pay.body.reason}` : ""}`);
 
@@ -235,21 +241,11 @@ async function main() {
     const payTag = await verifyTx({ client: publicClient, hash: payHash });
     record("El pago sale con el tag", !!payTag?.codes.includes(tag), txUrl(payHash));
   }
-  const freelancerAfter = (await publicClient.readContract({
-    address: token.address,
-    abi: erc20Abi,
-    functionName: "balanceOf",
-    args: [freelancerAccount.address],
-  })) as bigint;
+  const freelancerAfter = await balanceOf(freelancerAccount.address, (b) => b - freelancerBefore === m1);
   record("La freelancer recibió exactamente el monto del hito", freelancerAfter - freelancerBefore === m1, `+${formatUnits(freelancerAfter - freelancerBefore, 18)} ${token.symbol}`);
 
   const payAgain = await api("/api/cron/releaser", { method: "POST", json: { milestoneId: first.id }, secret: true });
-  const freelancerFinal = (await publicClient.readContract({
-    address: token.address,
-    abi: erc20Abi,
-    functionName: "balanceOf",
-    args: [freelancerAccount.address],
-  })) as bigint;
+  const freelancerFinal = await balanceOf(freelancerAccount.address);
   record("Pagar de nuevo no paga dos veces", payAgain.body?.kind === "already_paid" && freelancerFinal === freelancerAfter, String(payAgain.body?.kind));
 
   // 8. Recibo.
