@@ -35,7 +35,7 @@ describe("POST /api/intake", () => {
   });
 
   it("503 si falta la clave de la IA, con un mensaje que manda al formulario", async () => {
-    extract.mockRejectedValueOnce(new IntakeError("Falta ANTHROPIC_API_KEY.", "no_key"));
+    extract.mockRejectedValueOnce(new IntakeError("Falta GEMINI_API_KEY.", "no_key"));
     const res = await call({ text: "algo" });
     expect(res.status).toBe(503);
     expect((await res.json()).error).toMatch(/formulario a mano/);

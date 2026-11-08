@@ -1,5 +1,5 @@
 // POST /api/intake: de un texto libre a un borrador de acuerdo (PAC-35).
-// Claude solo propone hitos: no crea el acuerdo ni mueve plata. El formulario lo revisa.
+// La IA solo propone hitos: no crea el acuerdo ni mueve plata. El formulario lo revisa.
 import { MAX_INTAKE_TEXT_LENGTH, IntakeError, extractAgreementDraft } from "@/lib/intake/extract";
 
 export async function POST(request: Request) {
