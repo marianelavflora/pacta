@@ -127,7 +127,7 @@ Dónde va cada cosa. Los tickets usan estos nombres; si cambiás uno, actualizá
 | `app/api/cron/` | Tareas programadas (protegidas con `CRON_SECRET`) |
 | `components/` | Piezas de pantalla: `Header.tsx`, `Footer.tsx`, `Logo.tsx`; `components/ui/` es shadcn |
 | `lib/db.ts` | Cliente de Supabase (solo servidor) |
-| `lib/chain/` | `chains.ts` (red según `NEXT_PUBLIC_CHAIN` y links al explorador, `txUrl`), `wagmi.ts` (navegador), `wallet.ts` (cliente con tag, solo servidor), `tokens.ts` (direcciones por red), `approval.ts` (mensaje de firma) |
+| `lib/chain/` | `chains.ts` (red según `NEXT_PUBLIC_CHAIN` y links al explorador, `txUrl`), `wagmi.ts` (navegador), `wallet.ts` (cliente con tag, solo servidor), `tokens.ts` (direcciones por red), `approval.ts` (mensaje de firma), `identity.ts` (registros ERC-8004 por red y la entrada `registrations` de la card) |
 | `lib/fx/` | Precio de referencia y comparación |
 | `lib/notify/` | `whatsapp.ts`, `email.ts`, `messages.ts` (textos), `events.ts` (un aviso por cambio de estado), `index.ts` (`notify`) |
 | `lib/validation/` | Esquemas de zod compartidos entre web y API |
@@ -200,6 +200,7 @@ Cuando un agente coordina a otros para avanzar varios tickets en paralelo, convi
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
+- 2026-11-08 · Identidad del agente (PAC-44/45): la agent card vive en `public/agent-card.json` (dominio `https://pacta-dun.vercel.app`) y el registro se hace con `npm run agent:register` (ensayo por defecto; `--send` registra; en mainnet exige que Mavi apruebe con `APPROVED_MAINNET=yes`). Solo se registra una vez por red. El `agentId` de testnet NO va a la card de producción.
 - 2026-11-01 · WhatsApp (PAC-09): usamos **Twilio** (sandbox para probar, Content Template Builder para las plantillas). Seis plantillas Utility en castellano: `deposit_received`, `milestone_delivered`, `review_reminder`, `milestone_approved`, `auto_release`, `milestone_paid`. Textos, IDs y estado en `docs/whatsapp.md`.
 - 2026-10-31 · Aprobar un hito (PAC-25): el cliente firma EIP-712 `Approval` (dominio `{ name: "Pactá", version: "1", chainId }`; campos `mensaje`, `acuerdo` (public_id), `hito` (uuid), `posicion`, `monto` (formateado), `moneda`), armado por `buildApprovalTypedData` en `lib/chain/approval.ts`; `POST /api/milestones/[id]/approve` con `{ signature }` verifica contra `client_wallet` y deja el hito en `approved` (no paga).
 
