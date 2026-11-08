@@ -79,6 +79,7 @@ Una fila por archivo, ordenadas por ruta. Al sumar un test, agregá su fila en e
 | `api/intake.test.ts` | `POST /api/intake` (`app/api/intake/route.ts`), con la IA falsa | Devuelve el borrador, 400 si el cuerpo no es JSON o el texto falta o es muy largo, 503 si falta la clave de la IA (manda al formulario manual), 422 si no arma hitos válidos, 502 si la IA no responde | PAC-35 |
 | `old-links.test.ts` | Links viejos (`next.config.ts`, `lib/routes.ts`) | `/a/<id>` redirige a `/cliente/<id>` y `/f/<id>` a `/freelancer/<id>`; los links nuevos usan `/cliente` y `/freelancer` | Renombre de rutas |
 | `agent-card.test.ts` | Agent card ERC-8004 (`public/agent-card.json`) | Tiene `type`, `name`, `description`, `active`, `x402Support` y `supportedTrust`; el servicio web y la imagen son URLs https del mismo dominio y el ícono existe en `public/`; `registrations` está vacío hasta PAC-45; no lleva claves | PAC-44 |
+| `chain/identity.test.ts` | Identidad ERC-8004 (`lib/chain/identity.ts`) | Registros de mainnet y de Celo Sepolia (distintos), `agentRegistry` con formato `eip155:<chainId>:<registro>`, la ABI trae `register`, `setAgentURI` y `Registered`, `withRegistration` agrega el `agentId` sin repetir ni tocar la card original y conserva otras redes | PAC-45 |
 
 ## Prueba punta a punta (no corre con `npm test`)
 
