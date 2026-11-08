@@ -7,6 +7,24 @@ import { shortAddress } from "@/lib/chain/address";
 
 type EthereumWindow = Window & { ethereum?: { isMiniPay?: boolean } };
 
+function connectErrorMessage(error: Error): string {
+  console.error("[ConnectButton] connect error:", error);
+  const text = `${error.name} ${error.message}`.toLowerCase();
+  if (text.includes("providernotfound") || text.includes("provider not found")) {
+    return "No encontramos una billetera en este navegador. Instalá MetaMask (o abrí Pactá desde MiniPay) e intentá de nuevo.";
+  }
+  if (text.includes("rejected") || text.includes("denied") || text.includes("user closed")) {
+    return "Cancelaste la conexión. Tocá el botón y aceptá en tu billetera.";
+  }
+  if (text.includes("already pending") || text.includes("-32002")) {
+    return "Ya hay un pedido abierto en tu billetera. Abrila y aceptalo.";
+  }
+  if (text.includes("chain") || text.includes("network")) {
+    return "Tu billetera está en otra red. Cambiala a Celo e intentá de nuevo.";
+  }
+  return "No pudimos conectar. Abrí tu billetera e intentá de nuevo.";
+}
+
 /**
  * Botón de billetera. Dentro de MiniPay conecta sola y no muestra nada.
  * Solo lee la dirección: no maneja claves ni manda transacciones.
@@ -61,7 +79,7 @@ export function ConnectButton() {
       </Button>
       {error && (
         <p role="alert" className="text-xs text-destructive">
-          No pudimos conectar. Abrí tu billetera e intentá de nuevo.
+          {connectErrorMessage(error)}
         </p>
       )}
     </div>
