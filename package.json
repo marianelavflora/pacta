@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "compile:tokens": "node scripts/compile-test-token.mjs",
     "tokens:deploy": "tsx --conditions=react-server scripts/deploy-test-tokens.ts",
-    "tag:smoke": "tsx --conditions=react-server scripts/tag-smoke.ts"
+    "tag:smoke": "tsx --conditions=react-server scripts/tag-smoke.ts",
+    "e2e:sprint1": "tsx --conditions=react-server scripts/e2e-sprint1.ts"
   },
   "dependencies": {
     "@celo/attribution-tags": "^0.5.0",
