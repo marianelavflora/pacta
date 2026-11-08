@@ -13,9 +13,14 @@ import { CURRENCIES, MAX_REVIEW_DAYS, type Currency } from "@/lib/validation/agr
 
 /**
  * Modelo que lee el texto. Es de la capa gratuita de Gemini y se puede cambiar con
- * INTAKE_MODEL sin tocar el código.
+ * INTAKE_MODEL sin tocar el código. Elegimos el "lite" porque contesta en pocos segundos:
+ * en las pruebas, gemini-3.8-flash tardó más de 45 s en responder.
  */
-export const DEFAULT_INTAKE_MODEL = "gemini-3.8-flash";
+export const DEFAULT_INTAKE_MODEL = "gemini-3.1-flash-lite";
+
+// Si la IA no contesta a tiempo cortamos y usamos el reintento: la persona está esperando
+// en pantalla y no tiene que mirar una ruedita minutos.
+const REQUEST_TIMEOUT_MS = 20_000;
 
 export const MAX_INTAKE_TEXT_LENGTH = 4000;
 
@@ -94,7 +99,10 @@ function getSharedClient(): IntakeClient {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new IntakeError("Falta GEMINI_API_KEY.", "no_key");
 
-  sharedClient ??= new GoogleGenAI({ apiKey }) as unknown as IntakeClient;
+  sharedClient ??= new GoogleGenAI({
+    apiKey,
+    httpOptions: { timeout: REQUEST_TIMEOUT_MS },
+  }) as unknown as IntakeClient;
   return sharedClient;
 }
 
