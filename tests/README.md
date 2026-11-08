@@ -78,6 +78,7 @@ Una fila por archivo, ordenadas por ruta. Al sumar un test, agregá su fila en e
 | `intake/apply-draft.test.ts` | Propuesta de la IA al formulario (`lib/intake/apply-draft.ts`) | Carga título, moneda e hitos y deja el texto como descripción, el total sale de los montos propuestos y cambia al editar uno, no pisa lo que la persona ya escribió, hito sin monto queda vacío, corta en 10 hitos y avisa, cada fila con su id | PAC-37 |
 | `api/intake.test.ts` | `POST /api/intake` (`app/api/intake/route.ts`), con la IA falsa | Devuelve el borrador, 400 si el cuerpo no es JSON o el texto falta o es muy largo, 503 si falta la clave de la IA (manda al formulario manual), 422 si no arma hitos válidos, 502 si la IA no responde | PAC-35 |
 | `old-links.test.ts` | Links viejos (`next.config.ts`, `lib/routes.ts`) | `/a/<id>` redirige a `/cliente/<id>` y `/f/<id>` a `/freelancer/<id>`; los links nuevos usan `/cliente` y `/freelancer` | Renombre de rutas |
+| `agent-card.test.ts` | Agent card ERC-8004 (`public/agent-card.json`) | Tiene `type`, `name`, `description`, `active`, `x402Support` y `supportedTrust`; el servicio web y la imagen son URLs https del mismo dominio y el ícono existe en `public/`; `registrations` está vacío hasta PAC-45; no lleva claves | PAC-44 |
 
 ## Prueba punta a punta (no corre con `npm test`)
 
