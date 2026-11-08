@@ -68,13 +68,16 @@ export function AgreementForm() {
     if (updated.clientCurrency) setCurrencyError(undefined);
   }
 
-  // Carga lo que propuso el agente sin pisar lo que la persona ya escribió. Devuelve cuántos hitos cargó.
-  function applyDraft(draft: IntakeDraftResponse, text: string): number {
+  // Carga lo que propuso el agente sin pisar lo que la persona ya escribió.
+  // Devuelve cómo quedó el formulario, para que el chat sepa qué preguntar después.
+  function applyDraft(draft: IntakeDraftResponse, text: string) {
     const applied = applyIntakeDraft(draft, text, details, newMilestoneRow);
+    const rowsToKeep =
+      applied.rows.length > 0 ? applied.rows : [newMilestoneRow()];
     changeDetails(applied.details);
-    changeRows(applied.rows.length > 0 ? applied.rows : [newMilestoneRow()]);
+    changeRows(rowsToKeep);
     setDetailsErrors({});
-    return applied.rows.length;
+    return { details: applied.details, rows: rowsToKeep, count: applied.rows.length };
   }
 
   function continueToDetails() {
@@ -85,14 +88,16 @@ export function AgreementForm() {
     if (result.valid && details.clientCurrency) setStep(2);
   }
 
-  async function submit() {
+  // Valida y manda el acuerdo a la API. Devuelve el error para mostrar, o undefined si salió bien.
+  // "wallet" significa que falta conectar la billetera.
+  async function createAgreement(): Promise<string | undefined> {
     const errors = validateDetails(details);
     setDetailsErrors(errors);
     setSubmitError(undefined);
-    if (Object.keys(errors).length > 0 || sending) return;
+    if (Object.keys(errors).length > 0 || sending) return "Faltan datos";
     if (!isConnected || !address) {
       setSubmitError("wallet");
-      return;
+      return "wallet";
     }
 
     setSending(true);
@@ -107,11 +112,11 @@ export function AgreementForm() {
         publicId?: string;
       };
       if (!res.ok || !data.publicId) {
-        setSubmitError(
+        const message =
           data.error ??
-            "No pudimos guardar el acuerdo. Probá de nuevo en un rato.",
-        );
-        return;
+          "No pudimos guardar el acuerdo. Probá de nuevo en un rato.";
+        setSubmitError(message);
+        return message;
       }
       setCreated({
         link: window.location.origin + clientUrl(data.publicId),
@@ -121,13 +126,19 @@ export function AgreementForm() {
         total: `${currencySymbol(details.clientCurrency)} ${formatUnits(totalUnits(rows))}`,
         totalUnits: totalUnits(rows).toString(),
       });
+      return undefined;
     } catch {
-      setSubmitError(
-        "No pudimos conectarnos. Revisá tu internet y probá de nuevo. Lo que cargaste sigue acá.",
-      );
+      const message =
+        "No pudimos conectarnos. Revisá tu internet y probá de nuevo. Lo que cargaste sigue acá.";
+      setSubmitError(message);
+      return message;
     } finally {
       setSending(false);
     }
+  }
+
+  function submit() {
+    void createAgreement();
   }
 
   if (created) {
@@ -166,6 +177,8 @@ export function AgreementForm() {
             onRowsChange={changeRows}
             onDetailsChange={changeDetails}
             onContinue={continueToDetails}
+            onGenerate={createAgreement}
+            generating={sending}
           />
         </>
       ) : (
@@ -174,7 +187,7 @@ export function AgreementForm() {
           className="flex flex-col gap-6"
           onSubmit={(event) => {
             event.preventDefault();
-            void submit();
+            submit();
           }}
         >
           <h2 className="text-3xl font-bold tracking-tight">

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ArrowUp, Pencil, Plus, Sparkles } from "lucide-react";
+import { ConnectButton } from "@/components/ConnectButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,7 +19,10 @@ import {
 } from "@/lib/agreement-form";
 import { formatUnits } from "@/lib/amounts";
 import type { IntakeDraftResponse } from "@/lib/intake/apply-draft";
+import { applyAnswer, nextQuestion } from "@/lib/intake/questions";
 import {
+  ALL_SET_MESSAGE,
+  CONFIRM_MESSAGE,
   EXAMPLE_TEXT,
   explainAgreement,
   FAILURE_MESSAGE,
@@ -43,12 +47,18 @@ type Props = {
   rowErrors: MilestoneErrors[];
   listError?: string;
   currencyError?: string;
-  /** Carga la propuesta de la IA en el formulario. Devuelve cuántos hitos cargó. */
-  onApplyDraft: (draft: IntakeDraftResponse, text: string) => number;
+  /** Carga la propuesta de la IA en el formulario. Devuelve cómo quedó y cuántos hitos cargó. */
+  onApplyDraft: (
+    draft: IntakeDraftResponse,
+    text: string,
+  ) => { details: DetailsValues; rows: MilestoneRow[]; count: number };
   onRowsChange: (rows: MilestoneRow[]) => void;
   onDetailsChange: (details: DetailsValues) => void;
   /** "Está bien, seguir": pasa al paso 2. */
   onContinue: () => void;
+  /** "Sí, generar el acuerdo": lo crea. Devuelve el error para mostrar, o undefined si salió bien. */
+  onGenerate: () => Promise<string | undefined>;
+  generating: boolean;
 };
 
 function AgentBubble({
@@ -203,6 +213,52 @@ function MilestonesCard({
   );
 }
 
+/** Lo que se va a enviar al crear el acuerdo, para que la persona lo confirme. */
+function AgreementSummary({
+  details,
+  rows,
+}: {
+  details: DetailsValues;
+  rows: MilestoneRow[];
+}) {
+  const payout = details.payoutCurrency || "wARS";
+  const items: [string, string][] = [
+    ["Trabajo", details.title],
+    ["Descripción", details.description],
+    ["Contacto del cliente", details.clientContact],
+    [
+      "Tu cliente paga en",
+      `${details.clientCurrency} (${currencySymbol(details.clientCurrency)})`,
+    ],
+    ["Vos cobrás en", `${payout} (${currencySymbol(payout)})`],
+    [
+      "Hitos",
+      rows
+        .map(
+          (row, index) =>
+            `${index + 1}. ${row.title} · ${formatTypedAmount(details.clientCurrency, row.amount)} · ${row.reviewDays} días para revisar`,
+        )
+        .join("\n"),
+    ],
+    [
+      "Total",
+      `${currencySymbol(details.clientCurrency)} ${formatUnits(totalUnits(rows))}`,
+    ],
+  ];
+  return (
+    <dl className="flex flex-col gap-2 text-sm">
+      {items.map(([label, value]) => (
+        <div key={label} className="flex flex-col">
+          <dt className="text-muted-foreground">{label}</dt>
+          <dd className="font-semibold break-words whitespace-pre-line">
+            {value}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 /**
  * Paso 1 de /nuevo: la persona le cuenta el trabajo al agente en un chat y él arma los hitos.
  * Todo queda editable: el agente propone y la persona decide (PAC-37).
@@ -217,6 +273,8 @@ export function IntakeChat({
   onRowsChange,
   onDetailsChange,
   onContinue,
+  onGenerate,
+  generating,
 }: Props) {
   const nextId = useRef(1);
   const newMessage = (
@@ -238,11 +296,16 @@ export function IntakeChat({
   const [showCurrencies, setShowCurrencies] = useState(false);
   const [showDays, setShowDays] = useState(false);
   const [days, setDays] = useState("3");
+  const [generateError, setGenerateError] = useState<string>();
 
   const hasErrors =
     rowErrors.some((errors) => Object.keys(errors).length > 0) || !!listError;
   const editorOpen = editing || hasErrors;
   const currenciesOpen = showCurrencies || !!currencyError;
+
+  // Lo que todavía falta preguntar. Sin pregunta pendiente, el acuerdo está listo para generar.
+  const question = hasMilestones ? nextQuestion(details, rows) : null;
+  const readyToGenerate = hasMilestones && !question && !editorOpen;
 
   function addMessage(from: ChatMessage["from"], text: string) {
     setMessages((current) => [...current, newMessage(from, text)]);
@@ -252,10 +315,18 @@ export function IntakeChat({
     const text = draftText.trim();
     if (!text || thinking) return;
 
-    const allTexts = [...userTexts, text];
-    setUserTexts(allTexts);
     setDraftText("");
     setFailed(false);
+    setGenerateError(undefined);
+
+    // Si el agente hizo una pregunta, el texto es la respuesta: se aplica acá, sin llamar a la IA.
+    if (question) {
+      answerQuestion(question, text);
+      return;
+    }
+
+    const allTexts = [...userTexts, text];
+    setUserTexts(allTexts);
     addMessage("user", text);
     setThinking(true);
 
@@ -275,7 +346,8 @@ export function IntakeChat({
         setFailed(true);
         return;
       }
-      const loaded = onApplyDraft(body, joinUserMessages(allTexts));
+      const applied = onApplyDraft(body, joinUserMessages(allTexts));
+      const loaded = applied.count;
       setAgentNotes(body.notes);
       setHasMilestones(loaded > 0);
       setEditing(false);
@@ -285,6 +357,9 @@ export function IntakeChat({
           ? `¡Listo! Lo armé en ${loaded} ${loaded === 1 ? "hito" : "hitos"}. Revisalo y cambiá lo que quieras:`
           : FAILURE_MESSAGE,
       );
+      if (loaded > 0 && !nextQuestion(applied.details, applied.rows)) {
+        addMessage("agent", ALL_SET_MESSAGE);
+      }
     } catch (error) {
       const timedOut = error instanceof DOMException && error.name === "TimeoutError";
       addMessage("agent", timedOut ? FAILURE_MESSAGE : NETWORK_ERROR);
@@ -292,6 +367,31 @@ export function IntakeChat({
     } finally {
       setThinking(false);
     }
+  }
+
+  // Guarda la respuesta a la pregunta pendiente y avisa si ya está todo.
+  function answerQuestion(asked: NonNullable<typeof question>, answer: string) {
+    setMessages((current) => [
+      ...current,
+      newMessage("agent", asked.text),
+      newMessage("user", answer),
+    ]);
+    const result = applyAnswer(asked, answer, details, rows);
+    if (!result.ok) {
+      addMessage("agent", result.message);
+      return;
+    }
+    onDetailsChange(result.details);
+    onRowsChange(result.rows);
+    if (!nextQuestion(result.details, result.rows)) {
+      addMessage("agent", ALL_SET_MESSAGE);
+    }
+  }
+
+  async function generate() {
+    setGenerateError(undefined);
+    const error = await onGenerate();
+    if (error) setGenerateError(error);
   }
 
   function startByHand() {
@@ -431,6 +531,63 @@ export function IntakeChat({
               </Button>
             </div>
           )}
+
+          {question && (
+            <>
+              <AgentBubble>{question.text}</AgentBubble>
+              {question.kind === "clientCurrency" && (
+                <div className="flex flex-wrap gap-2">
+                  {CURRENCIES.map((currency) => (
+                    <Chip
+                      key={currency}
+                      onClick={() => answerQuestion(question, currency)}
+                    >
+                      {currency} ({currencySymbol(currency)})
+                    </Chip>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {readyToGenerate && (
+            <>
+              <AgentBubble wide>
+                <p className="mb-3">{CONFIRM_MESSAGE}</p>
+                <AgreementSummary details={details} rows={rows} />
+              </AgentBubble>
+
+              {generateError === "wallet" ? (
+                <div
+                  role="alert"
+                  className="flex flex-col items-start gap-2 rounded-3xl border border-destructive/50 p-4 text-sm"
+                >
+                  <p>
+                    Para crear el acuerdo conectá tu billetera (MetaMask o
+                    MiniPay): ahí vas a cobrar. Después tocá otra vez
+                    &quot;Sí, generar el acuerdo&quot;.
+                  </p>
+                  <ConnectButton />
+                </div>
+              ) : (
+                generateError && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {generateError}
+                  </p>
+                )
+              )}
+
+              <Button
+                type="button"
+                size="lg"
+                className="bg-highlight text-highlight-foreground hover:bg-highlight/90"
+                disabled={generating}
+                onClick={() => void generate()}
+              >
+                {generating ? "Generando…" : "Sí, generar el acuerdo"}
+              </Button>
+            </>
+          )}
         </>
       )}
 
@@ -464,7 +621,9 @@ export function IntakeChat({
           disabled={thinking}
           onChange={(event) => setDraftText(event.target.value)}
           placeholder={
-            hasMilestones
+            question
+              ? "Escribí tu respuesta…"
+              : hasMilestones
               ? "Pedile un cambio, por ejemplo: el logo final cuesta 700"
               : "Escribile al agente…"
           }
@@ -485,10 +644,17 @@ export function IntakeChat({
         <Button
           type="button"
           size="lg"
-          className="bg-highlight text-highlight-foreground hover:bg-highlight/90"
+          variant={readyToGenerate ? "outline" : "default"}
+          className={
+            readyToGenerate
+              ? undefined
+              : "bg-highlight text-highlight-foreground hover:bg-highlight/90"
+          }
           onClick={onContinue}
         >
-          Está bien, seguir
+          {readyToGenerate
+            ? "Prefiero revisar los datos a mano"
+            : "Está bien, seguir"}
         </Button>
       )}
     </section>
