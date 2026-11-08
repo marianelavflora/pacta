@@ -13,6 +13,7 @@ import {
   getAgentWalletClient,
   getPublicClient,
 } from "@/lib/chain/wallet";
+import { onMilestonePaid } from "@/lib/notify/events";
 import type { ReleaserDeps } from "./releaser";
 
 const RECEIPT_TIMEOUT_MS = 60_000;
@@ -39,8 +40,10 @@ export function getReleaserDeps(): ReleaserDeps {
   assertPayoutCapForMainnet(getChain().id, maxPayoutPerMilestone);
   const wallet = getAgentWalletClient();
   const pub = getPublicClient();
+  const db = getDb();
   return {
-    db: getDb(),
+    db,
+    onPaid: (agreementId, milestoneId) => onMilestonePaid(db, agreementId, milestoneId),
     agentAddress: getAgentAddress(),
     tokenAddress: (currency) => getToken(currency).address,
     // Tope opcional por pago, en unidades enteras del token (ej. "500"). Vacío = sin tope.

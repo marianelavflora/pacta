@@ -239,7 +239,7 @@ describe("liberador: pagar un hito aprobado", () => {
     expect(milestone().status).toBe("approved");
   });
 
-  it.each(["pending", "funded", "delivered", "reminded", "paused", "expired"])(
+  it.each(["pending", "funded", "delivered", "reminded", "paused"])(
     "no paga un hito en estado %s",
     async (status) => {
       setup({ status });
@@ -249,6 +249,23 @@ describe("liberador: pagar un hito aprobado", () => {
       expect(db.tables.movements).toHaveLength(0);
     },
   );
+
+  it("paga un hito expired (liberado solo al día 6) igual que uno aprobado", async () => {
+    setup({ status: "expired" });
+    const result = await releaseMilestone(deps(), "m1");
+    expect(result.kind).toBe("paid");
+    expect(chain.transfer).toHaveBeenCalledTimes(1);
+    expect(milestone().status).toBe("paid");
+  });
+
+  it("avisa el pago, y si el aviso falla el pago igual queda hecho", async () => {
+    const onPaid = vi.fn(async () => {
+      throw new Error("sin mail");
+    });
+    expect((await releaseMilestone(deps({ onPaid }), "m1")).kind).toBe("paid");
+    expect(onPaid).toHaveBeenCalledWith("a1", "m1");
+    expect(milestone().status).toBe("paid");
+  });
 
   it("hito inexistente", async () => {
     expect((await releaseMilestone(deps(), "nope")).kind).toBe("not_found");
@@ -278,9 +295,8 @@ describe("liberador: pagar un hito aprobado", () => {
   });
 });
 
-// Pendiente (otros tickets): recordatorios y topes.
-describe("agente: recordatorios y topes", () => {
-  it.todo("manda el segundo aviso al día 3 sin respuesta (reminded)");
-  it.todo("libera el hito solo al día 6 sin respuesta (expired)");
+// Los recordatorios (día 3) y la auto-liberación (día 6) se prueban en tests/agent/reminders.test.ts.
+// Pendiente (otro ticket): topes.
+describe("agente: topes", () => {
   it.todo("respeta el tope por acuerdo y el tope diario (PAC-46)");
 });
