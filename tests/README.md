@@ -70,3 +70,9 @@ Una fila por archivo, ordenadas por ruta. Al sumar un test, agregá su fila en e
 | `chain/deposit.test.ts` | Depósito del cliente (`lib/chain/deposit.ts`) | El calldata del `transfer` termina con el sufijo del tag (se lee con `fromDataSuffix`), tag inválido falla, montos en `bigint` (0, negativos y texto se rechazan), errores de billetera en castellano | PAC-20 |
 | `agent/releaser.test.ts` | Liberador (`agent/releaser.ts`) y recordatorios | Liberador (PAC-26): paga un hito `approved` una sola vez (tambien con dos corridas a la vez), simulacion que revierte no deja nada a medias, envio sin hash queda en revision manual sin reintento, recibo lento se reconcilia sin reenviar, saldo, estado, moneda, wallet y tope. Recordatorios dia 3 y 6, y topes por acuerdo/diarios (`todo`, PAC-60) | PAC-26, PAC-60 |
 | `lib/receipts.test.ts` | Recibo de un hito (`lib/receipts.ts`) | Con una base falsa: arma el recibo con el pago `payout` confirmado y montos como texto, sin pago devuelve `payout: null`, hito inexistente o id mal formado da `null`, no filtra contactos ni firmas | PAC-27 |
+
+## Prueba punta a punta (no corre con `npm test`)
+
+| Script | Qué prueba | Ticket |
+|---|---|---|
+| `scripts/e2e-sprint1.ts` (`npm run e2e:sprint1`) | Contra el servidor local y **solo en Celo Sepolia**: crea un acuerdo de 2 hitos, el cliente deposita con tag, la bóveda lo registra, entrega, aprobación con firma, el liberador paga y se arma el recibo. También comprueba que una firma o entrega ajena se rechaza, que el cron pide contraseña, que el pago sale con tag y que no se paga dos veces. Escribe el resultado en `docs/pruebas/sprint-1.md`. Necesita `npm run dev` con el mismo `CRON_SECRET`. | PAC-28 |
