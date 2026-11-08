@@ -13,7 +13,7 @@ export const metadata: Metadata = {
  * - PAC-16 (#16): formulario con los datos del trabajo.
  * - PAC-17 (#17): lista de hitos.
  * - PAC-18 (#18): guardar y compartir el link con el cliente.
- * - PAC-37 (#37): pantalla de intake con Claude.
+ * - PAC-37 (#37): pantalla de intake con IA (`IntakeBox`, arriba del formulario).
  */
 export default function NewAgreementPage() {
   return (

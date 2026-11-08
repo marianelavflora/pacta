@@ -5,9 +5,17 @@ import { useAccount } from "wagmi";
 import { ConnectButton } from "@/components/ConnectButton";
 import { SubmitStep } from "@/components/agreement-form/SubmitStep";
 import { clientUrl } from "@/lib/routes";
+import {
+  applyIntakeDraft,
+  type IntakeDraftResponse,
+} from "@/lib/intake/apply-draft";
 import { Button } from "@/components/ui/button";
+import { IntakeBox } from "@/components/agreement-form/IntakeBox";
 import { DetailsStep } from "@/components/agreement-form/DetailsStep";
-import { MilestonesStep, newMilestoneRow } from "@/components/agreement-form/MilestonesStep";
+import {
+  MilestonesStep,
+  newMilestoneRow,
+} from "@/components/agreement-form/MilestonesStep";
 import {
   buildAgreementPayload,
   emptyDetails,
@@ -32,6 +40,21 @@ export function AgreementForm() {
   const [sending, setSending] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
   const [link, setLink] = useState<string>();
+  const [intakeNotes, setIntakeNotes] = useState<string[]>([]);
+
+  // Carga lo que propuso la IA. Vuelve al paso 1 para que revise los datos del trabajo
+  // (falta el contacto del cliente) y después los hitos. Devuelve cuántos hitos cargó.
+  function applyDraft(draft: IntakeDraftResponse, text: string): number {
+    const applied = applyIntakeDraft(draft, text, details, newMilestoneRow);
+    setDetails(applied.details);
+    setRows(applied.rows.length > 0 ? applied.rows : [newMilestoneRow()]);
+    setDetailsErrors({});
+    setRowErrors([]);
+    setListError(undefined);
+    setIntakeNotes(applied.notes);
+    setStep(1);
+    return applied.rows.length;
+  }
 
   function next() {
     const errors = validateDetails(details);
@@ -56,74 +79,108 @@ export function AgreementForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildAgreementPayload(details, rows, address)),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; publicId?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        publicId?: string;
+      };
       if (!res.ok || !data.publicId) {
-        setSubmitError(data.error ?? "No pudimos guardar el acuerdo. Probá de nuevo en un rato.");
+        setSubmitError(
+          data.error ??
+            "No pudimos guardar el acuerdo. Probá de nuevo en un rato.",
+        );
         return;
       }
       setLink(window.location.origin + clientUrl(data.publicId));
     } catch {
-      setSubmitError("No pudimos conectarnos. Revisá tu internet y probá de nuevo. Lo que cargaste sigue acá.");
+      setSubmitError(
+        "No pudimos conectarnos. Revisá tu internet y probá de nuevo. Lo que cargaste sigue acá.",
+      );
     } finally {
       setSending(false);
     }
   }
 
   if (link) {
-    return <SubmitStep title={details.title} clientContact={details.clientContact} link={link} />;
+    return (
+      <SubmitStep
+        title={details.title}
+        clientContact={details.clientContact}
+        link={link}
+      />
+    );
   }
 
   return (
-    <form
-      noValidate
-      className="flex flex-col gap-6"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (step === 1) next();
-        else submit();
-      }}
-    >
-      <p className="text-sm text-muted-foreground">Paso {step} de 2</p>
-
-      {step === 1 ? (
-        <DetailsStep values={details} errors={detailsErrors} onChange={setDetails} />
-      ) : (
-        <MilestonesStep
-          rows={rows}
-          rowErrors={rowErrors}
-          listError={listError}
-          currency={details.clientCurrency}
-          onChange={(updated) => {
-            setRows(updated);
-            setRowErrors([]);
-            setListError(undefined);
-          }}
-        />
+    <div className="flex flex-col gap-6">
+      <IntakeBox onApply={applyDraft} />
+      {intakeNotes.length > 0 && (
+        <ul
+          role="status"
+          className="flex flex-col gap-1 rounded-md border p-3 text-sm"
+        >
+          {intakeNotes.map((note) => (
+            <li key={note}>{note}</li>
+          ))}
+        </ul>
       )}
+      <form
+        noValidate
+        className="flex flex-col gap-6"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (step === 1) next();
+          else submit();
+        }}
+      >
+        <p className="text-sm text-muted-foreground">Paso {step} de 2</p>
 
-      {submitError === "wallet" ? (
-        <div role="alert" className="flex flex-col items-start gap-2 rounded-md border border-destructive/50 p-3 text-sm">
-          <p>Para crear el acuerdo conectá tu billetera: ahí vas a cobrar.</p>
-          <ConnectButton />
-        </div>
-      ) : (
-        submitError && (
-          <p role="alert" className="text-sm text-destructive">
-            {submitError}
-          </p>
-        )
-      )}
-
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
-        {step === 2 && (
-          <Button type="button" variant="outline" onClick={() => setStep(1)}>
-            Volver
-          </Button>
+        {step === 1 ? (
+          <DetailsStep
+            values={details}
+            errors={detailsErrors}
+            onChange={setDetails}
+          />
+        ) : (
+          <MilestonesStep
+            rows={rows}
+            rowErrors={rowErrors}
+            listError={listError}
+            currency={details.clientCurrency}
+            onChange={(updated) => {
+              setRows(updated);
+              setRowErrors([]);
+              setListError(undefined);
+            }}
+          />
         )}
-        <Button type="submit" className="sm:ml-auto" disabled={sending}>
-          {step === 1 ? "Siguiente" : sending ? "Creando…" : "Crear acuerdo"}
-        </Button>
-      </div>
-    </form>
+
+        {submitError === "wallet" ? (
+          <div
+            role="alert"
+            className="flex flex-col items-start gap-2 rounded-md border border-destructive/50 p-3 text-sm"
+          >
+            <p>Para crear el acuerdo conectá tu billetera: ahí vas a cobrar.</p>
+            <ConnectButton />
+          </div>
+        ) : (
+          submitError && (
+            <p role="alert" className="text-sm text-destructive">
+              {submitError}
+            </p>
+          )
+        )}
+
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+          {step === 2 && (
+            <Button type="button" variant="outline" onClick={() => setStep(1)}>
+              Volver
+            </Button>
+          )}
+          <Button type="submit" className="sm:ml-auto" disabled={sending}>
+            {step === 1 ? "Siguiente" : sending ? "Creando…" : "Crear acuerdo"}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
