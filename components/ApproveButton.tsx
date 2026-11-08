@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount, useChainId, useSignTypedData, useSwitchChain } from "wagmi";
+import { useAccount, useSignTypedData, useSwitchChain } from "wagmi";
 import { Button } from "@/components/ui/button";
 import {
   APPROVAL_MESSAGES,
@@ -32,8 +32,8 @@ type ApproveButtonProps = {
  * solo prueba que fue el cliente. El pago lo hace después el agente.
  */
 export function ApproveButton(props: ApproveButtonProps) {
-  const { address } = useAccount();
-  const walletChainId = useChainId();
+  // `chainId` de useAccount es la red real de la billetera (useChainId() devuelve la de la app).
+  const { address, chainId: walletChainId } = useAccount();
   const { switchChainAsync, isPending: switching } = useSwitchChain();
   const { signTypedDataAsync, isPending: signing } = useSignTypedData();
   const router = useRouter();

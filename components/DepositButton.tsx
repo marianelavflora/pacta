@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useAccount, useChainId, useSwitchChain, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { CircleCheck } from "lucide-react";
+import { useAccount, useSwitchChain, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { formatUnits } from "@/lib/amounts";
 import { getChain, getChainName, txUrl } from "@/lib/chain/chains";
@@ -32,8 +33,9 @@ export function DepositButton({
   /** Lo que falta depositar, en unidades mínimas (texto). */
   remaining: string;
 }) {
-  const { isConnected } = useAccount();
-  const chainId = useChainId();
+  // `chainId` de useAccount es la red real de la billetera. useChainId() devolvería siempre
+  // la red configurada en la app, aunque MetaMask esté en otra que no soportamos.
+  const { isConnected, chainId } = useAccount();
   const { switchChain, isPending: switching } = useSwitchChain();
   const { writeContractAsync, isPending: signing, data: hash, reset } = useWriteContract();
   const receipt = useWaitForTransactionReceipt({ hash });
@@ -44,6 +46,7 @@ export function DepositButton({
   const [notified, setNotified] = useState(false);
   const [notifyError, setNotifyError] = useState<string | null>(null);
   const [notifying, setNotifying] = useState(false);
+  const [paidText, setPaidText] = useState(""); // monto del último depósito, para la pantalla de éxito
   const notifyStarted = useRef<string | null>(null); // hash ya avisado (evita avisar dos veces)
   const busy = useRef(false); // evita dos envíos por doble clic antes de que React re-renderice
 
@@ -81,6 +84,7 @@ export function DepositButton({
     const check = validateDepositAmount(text);
     if (!check.ok) return setError(check.error);
     busy.current = true;
+    setPaidText(`${formatUnits(check.amount)} ${token.symbol}`);
     try {
       await writeContractAsync({
         address: token.address,
@@ -92,6 +96,7 @@ export function DepositButton({
         dataSuffix: depositDataSuffix(getAttributionTag()),
       });
     } catch (e) {
+      console.error("[DepositButton] deposit error:", e);
       setError(friendlyDepositError(e));
     } finally {
       busy.current = false;
@@ -111,6 +116,34 @@ export function DepositButton({
         <Button size="lg" disabled={switching} onClick={() => switchChain({ chainId: target.id })}>
           {switching ? "Cambiando…" : `Cambiar a ${target.name}`}
         </Button>
+      </div>
+    );
+  }
+
+  // Pantalla de éxito: el depósito salió Y el agente ya lo registró.
+  if (done && notified && hash) {
+    return (
+      <div role="status" className="flex flex-col items-center gap-3 py-2 text-center">
+        <CircleCheck className="size-14 text-success" aria-hidden />
+        <h3 className="text-2xl font-bold text-balance">¡El pago fue realizado con éxito!</h3>
+        <p className="text-muted-foreground">
+          Depositaste {paidText}. El agente ya lo registró y tu plata quedó guardada: se libera de a partes
+          cuando aprobás cada entrega.
+        </p>
+        <a className="text-sm underline" href={txUrl(hash, getChainName())} target="_blank" rel="noreferrer">
+          Ver en el explorador
+        </a>
+        {remainingUnits > BigInt(0) && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              reset();
+              setText(formatUnits(remainingUnits).replace(/\./g, ""));
+            }}
+          >
+            Depositar lo que falta ({formatUnits(remainingUnits)} {token.symbol})
+          </Button>
+        )}
       </div>
     );
   }

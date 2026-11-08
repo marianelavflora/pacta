@@ -60,10 +60,16 @@ export function friendlyDepositError(error: unknown): string {
   if (text.includes("user rejected") || text.includes("user denied") || text.includes("rejected the request")) {
     return "Cancelaste la firma en tu billetera. No se movió nada; podés intentar de nuevo.";
   }
+  if (text.includes("has not been authorized") || text.includes("4100")) {
+    return "Tu billetera no le dio permiso a Pactá. Tocá Desconectar, volvé a conectarla y aceptá en MetaMask.";
+  }
   if (text.includes("insufficient") || text.includes("exceeds balance") || text.includes("transfer amount exceeds")) {
     return "No te alcanza el saldo para este monto (o para la comisión de la red). Revisá tu billetera.";
   }
-  if (text.includes("chain") && (text.includes("mismatch") || text.includes("switch"))) {
+  if (
+    text.includes("chain") &&
+    (text.includes("mismatch") || text.includes("does not match") || text.includes("switch"))
+  ) {
     return "Tu billetera está en otra red. Cambiala a la red de Pactá e intentá de nuevo.";
   }
   return "No pudimos enviar el depósito. Revisá tu billetera e intentá de nuevo.";
