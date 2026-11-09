@@ -28,9 +28,28 @@ export type ReleaserChain = {
   getReceipt(hash: Hash): Promise<{ status: "success" | "reverted" } | null>;
 };
 
+/**
+ * Cambio de una moneda por otra (PAC-32). En producción lo arma agent/releaser-server.ts con Textile.
+ * Sin `converter`, un acuerdo con monedas distintas queda en `needs_conversion` (no se paga).
+ */
+export type Converter = {
+  /** Cuánto se espera recibir (estimado, ya contrastado con la referencia), o null si hoy no hay ruta real. */
+  estimate(from: TokenSymbol, to: TokenSymbol, amountIn: bigint): Promise<bigint | null>;
+  /**
+   * Hace el cambio. Si falla, el error trae `moneyMayHaveMoved`: false = seguro que no salió plata
+   * (se reintenta); true = pudo salir (lo mira una persona).
+   */
+  convert(
+    request: { from: TokenSymbol; to: TokenSymbol; amountIn: bigint; minAmountOut: bigint },
+    onProgress: (legs: unknown[]) => Promise<void>,
+  ): Promise<{ amountOut: bigint; finalTxHash: Hash; legs: unknown[] }>;
+};
+
 export type ReleaserDeps = {
   db: SupabaseClient;
   chain: ReleaserChain;
+  /** Opcional: cambia de moneda cuando el cliente deposita en una y la freelancer cobra en otra. */
+  converter?: Converter;
   agentAddress: Address;
   tokenAddress: (currency: TokenSymbol) => Address;
   /**
@@ -67,7 +86,7 @@ const hashOf = (value: string) => value.toLowerCase() as Hash;
 
 /** Paga un hito `approved`. Seguro de llamar muchas veces: nunca paga dos veces. */
 export async function releaseMilestone(deps: ReleaserDeps, milestoneId: string): Promise<ReleaseResult> {
-  const { db, chain } = deps;
+  const { db } = deps;
 
   const found = await db
     .from("milestones")
@@ -96,14 +115,41 @@ export async function releaseMilestone(deps: ReleaserDeps, milestoneId: string):
   const agreement = agreementRes.data as Row;
   const currency = agreement.payout_currency as TokenSymbol;
 
-  // PUNTO DE EXTENSIÓN (PAC-32): acá va la conversión de FX (cotizar, swap y pagar el monto
-  // convertido). En v1 solo se paga cuando el cliente depositó en la moneda en que cobra la freelancer.
-  if (agreement.client_currency !== currency) return { kind: "needs_conversion" };
-
   const userRes = await db.from("users").select("wallet").eq("id", agreement.freelancer_id).single();
   if (userRes.error) fail("buscar a la freelancer", userRes.error);
   const wallet = (userRes.data as Row).wallet as string;
   if (!isAddress(wallet)) return { kind: "no_freelancer_wallet" };
+
+  // Monedas distintas: primero se cambia (PAC-32) y después se paga lo que llegó.
+  if (agreement.client_currency !== currency) {
+    if (!deps.converter) return { kind: "needs_conversion" };
+    return convertAndPay(deps, {
+      milestoneId,
+      agreementId,
+      from: agreement.client_currency as TokenSymbol,
+      to: currency,
+      wallet: wallet as Address,
+      amountIn: amount,
+    });
+  }
+
+  return sendPayout(deps, { milestoneId, agreementId, currency, wallet: wallet as Address, amount, claim: true });
+}
+
+type PayoutPlan = {
+  milestoneId: string;
+  agreementId: string;
+  currency: TokenSymbol;
+  wallet: Address;
+  amount: bigint;
+  /** true = el hito todavía está `approved` y hay que reservarlo; false = ya está `converting`. */
+  claim: boolean;
+};
+
+/** Manda el pago al freelancer. Es el mismo camino con o sin cambio de moneda antes. */
+async function sendPayout(deps: ReleaserDeps, plan: PayoutPlan): Promise<ReleaseResult> {
+  const { db, chain } = deps;
+  const { milestoneId, agreementId, currency, wallet, amount } = plan;
 
   const cap = deps.maxPayoutByCurrency?.[currency];
   if (cap !== undefined && amount > cap) return { kind: "over_cap" };
@@ -112,9 +158,9 @@ export async function releaseMilestone(deps: ReleaserDeps, milestoneId: string):
   if ((await chain.balanceOf(token, deps.agentAddress)) < amount) return { kind: "insufficient_balance" };
 
   // 0) Simular el transfer antes de tocar nada. Si revierte, es seguro que no salio plata:
-  //    no queda ningun estado a medias y el hito sigue `approved`.
+  //    no queda ningun estado a medias y el hito sigue como estaba.
   try {
-    await chain.simulateTransfer(token, wallet as Address, amount);
+    await chain.simulateTransfer(token, wallet, amount);
   } catch (error) {
     return { kind: "tx_failed", reason: error instanceof Error ? error.message : "la simulacion fallo" };
   }
@@ -140,23 +186,26 @@ export async function releaseMilestone(deps: ReleaserDeps, milestoneId: string):
   }
   const movementId = (inserted.data as Row).id as string;
 
-  // 2) Reservar el hito: approved → converting. Solo una corrida lo logra.
-  const claim = await db
-    .from("milestones")
-    .update({ status: "converting" })
-    .eq("id", milestoneId)
-    .in("status", PAYABLE)
-    .select("id");
-  if (claim.error) fail("reservar el hito", claim.error);
-  if (!claim.data?.length) {
-    await markFailed(db, movementId);
-    return { kind: "in_progress" };
+  // 2) Reservar el hito: approved → converting. Solo una corrida lo logra. (Si venimos de un cambio de
+  //    moneda, el hito ya está `converting` desde antes y no hay nada que reservar.)
+  if (plan.claim) {
+    const claim = await db
+      .from("milestones")
+      .update({ status: "converting" })
+      .eq("id", milestoneId)
+      .in("status", PAYABLE)
+      .select("id");
+    if (claim.error) fail("reservar el hito", claim.error);
+    if (!claim.data?.length) {
+      await markFailed(db, movementId);
+      return { kind: "in_progress" };
+    }
   }
 
   // 3) Mandar la transferencia (por el cliente único con tag).
   let txHash: Hash;
   try {
-    txHash = hashOf(await chain.transfer(token, wallet as Address, amount));
+    txHash = hashOf(await chain.transfer(token, wallet, amount));
   } catch (error) {
     // Error SIN hash (timeout de RPC, error ambiguo): no sabemos si la tx salio. NO se marca
     // `failed` ni se reabre el hito: queda `pending` + `converting` para revision manual y no
@@ -185,6 +234,137 @@ export async function releaseMilestone(deps: ReleaserDeps, milestoneId: string):
   return settle(deps, movementId, milestoneId, txHash, receipt.status, amount);
 }
 
+// ---------- Cambio de moneda (PAC-32) ----------
+
+type ConversionPlan = {
+  milestoneId: string;
+  agreementId: string;
+  from: TokenSymbol;
+  to: TokenSymbol;
+  wallet: Address;
+  amountIn: bigint;
+};
+
+// Se acepta recibir hasta 10 % menos que lo estimado: cubre la comisión y el movimiento del precio entre
+// la estimación y la cotización en firme. Más abajo que eso, el tramo 2 no se manda.
+const MIN_OUT_PERCENT = BigInt(90);
+const HUNDRED = BigInt(100);
+const RATE_DECIMALS = BigInt(12);
+
+/** amountOut/amountIn como decimal con 12 decimales, para guardar en `fx_rate`. */
+function rateText(amountIn: bigint, amountOut: bigint): string {
+  const scale = BigInt(10) ** RATE_DECIMALS;
+  const scaled = (amountOut * scale) / amountIn;
+  const whole = scaled / scale;
+  const fraction = (scaled % scale).toString().padStart(Number(RATE_DECIMALS), "0");
+  return `${whole}.${fraction}`;
+}
+
+/**
+ * Cambia el monto del hito a la moneda de cobro y paga lo que llegó. Por qué no puede cambiar dos veces:
+ * el movimiento `conversion` en `pending` se guarda ANTES de mandar nada y el índice único de la base
+ * no deja dos activos por hito. Si algo se corta a la mitad, no se reintenta solo: se revisa a mano.
+ */
+async function convertAndPay(deps: ReleaserDeps, plan: ConversionPlan): Promise<ReleaseResult> {
+  const { db, chain, converter } = deps;
+  const { milestoneId, agreementId, from, to, wallet, amountIn } = plan;
+  if (!converter) return { kind: "needs_conversion" };
+
+  // 0) Antes de tocar nada: saldo, ruta real disponible y tope. Si algo falla acá no salió plata.
+  if ((await chain.balanceOf(deps.tokenAddress(from), deps.agentAddress)) < amountIn) {
+    return { kind: "insufficient_balance" };
+  }
+  const estimate = await converter.estimate(from, to, amountIn).catch(() => null);
+  if (estimate === null || estimate <= BigInt(0)) return { kind: "needs_conversion" };
+  const cap = deps.maxPayoutByCurrency?.[to];
+  if (cap !== undefined && estimate > cap) return { kind: "over_cap" };
+
+  // 1) El movimiento `conversion` pending, con el detalle de cada tramo. Si la columna `details` no
+  //    existe (falta la migración 0003) esto falla acá, antes de mover nada.
+  const inserted = await db
+    .from("movements")
+    .insert({
+      agreement_id: agreementId,
+      milestone_id: milestoneId,
+      kind: "conversion",
+      from_currency: from,
+      to_currency: to,
+      amount_in: amountIn.toString(),
+      status: "pending",
+      details: { provider: "textile", legs: [] },
+    })
+    .select("id")
+    .single();
+  if (inserted.error) {
+    if (inserted.error.code !== UNIQUE_VIOLATION) fail("guardar el cambio de moneda", inserted.error);
+    return resumeIfAlreadyConverted(deps, milestoneId);
+  }
+  const movementId = (inserted.data as Row).id as string;
+
+  // 2) Reservar el hito: approved → converting. Solo una corrida lo logra.
+  const claim = await db
+    .from("milestones")
+    .update({ status: "converting" })
+    .eq("id", milestoneId)
+    .in("status", PAYABLE)
+    .select("id");
+  if (claim.error) fail("reservar el hito", claim.error);
+  if (!claim.data?.length) {
+    await markFailed(db, movementId);
+    return { kind: "in_progress" };
+  }
+
+  // 3) El cambio. Cada hash nuevo se guarda en `details` apenas aparece.
+  let result: Awaited<ReturnType<Converter["convert"]>>;
+  try {
+    result = await converter.convert(
+      { from, to, amountIn, minAmountOut: (estimate * MIN_OUT_PERCENT) / HUNDRED },
+      async (legs) => {
+        const progress = await db
+          .from("movements")
+          .update({ details: { provider: "textile", legs } })
+          .eq("id", movementId);
+        if (progress.error) throw new Error(progress.error.message);
+      },
+    );
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "el cambio falló";
+    // Solo se reintenta si el conversor dice, explícitamente, que NO salió plata. Un error sin esa
+    // información (timeout, error raro) se trata como que pudo salir.
+    const surelyNoMoneyMoved = (error as { moneyMayHaveMoved?: boolean } | null)?.moneyMayHaveMoved === false;
+    if (surelyNoMoneyMoved) {
+      // Seguro que no salió plata: el movimiento queda `failed` (libera el índice) y el hito se reabre.
+      await failAndReopen(db, movementId, milestoneId);
+      return { kind: "tx_failed", reason };
+    }
+    console.error(
+      `[releaser] NECESITA REVISION MANUAL: el cambio de moneda del milestone ${milestoneId} (movement ${movementId}) falló y pudo haber salido plata (${reason}). Mirá la wallet del agente antes de tocar nada.`,
+    );
+    return { kind: "needs_review", reason: "El cambio de moneda quedó a medias: revisar a mano" };
+  }
+
+  // 4) Guardar el cambio como confirmado, con lo que realmente llegó.
+  const confirmed = await db
+    .from("movements")
+    .update({
+      status: "confirmed",
+      amount_out: result.amountOut.toString(),
+      fx_rate: rateText(amountIn, result.amountOut),
+      tx_hash: hashOf(result.finalTxHash),
+      details: { provider: "textile", legs: result.legs },
+    })
+    .eq("id", movementId);
+  if (confirmed.error) {
+    console.error(
+      `[releaser] NECESITA REVISION MANUAL: el cambio del milestone ${milestoneId} se hizo (recibido ${result.amountOut}) pero no se pudo guardar (movement ${movementId}).`,
+    );
+    return { kind: "needs_review", reason: "El cambio se hizo pero no se pudo guardar: revisar a mano" };
+  }
+
+  // 5) Pagar lo que llegó. El hito ya está `converting`: no hay que reservarlo otra vez.
+  return sendPayout(deps, { milestoneId, agreementId, currency: to, wallet, amount: result.amountOut, claim: false });
+}
+
 /** Hito en `converting`: sin tx_hash no se reenvía nada; con hash se mira la cadena. */
 async function reconcile(deps: ReleaserDeps, milestoneId: string): Promise<ReleaseResult> {
   const { db, chain } = deps;
@@ -198,7 +378,27 @@ async function reconcile(deps: ReleaserDeps, milestoneId: string): Promise<Relea
   if (res.error) fail("buscar el pago", res.error);
   const movement = res.data as Row | null;
   if (!movement) {
-    // Sin pago activo: el hito quedó trabado sin plata en camino. Se reabre para reintentar.
+    // Sin pago activo: puede haber un cambio de moneda ya hecho al que le falta el pago, o a medias.
+    const conversion = await db
+      .from("movements")
+      .select("id, status, amount_out::text")
+      .eq("milestone_id", milestoneId)
+      .eq("kind", "conversion")
+      .neq("status", "failed")
+      .maybeSingle();
+    if (conversion.error) fail("buscar el cambio de moneda", conversion.error);
+    if (conversion.data) {
+      const swap = conversion.data as Row;
+      if (swap.status !== "confirmed") {
+        // Quedó a medias: puede haber USDT del agente en el medio. No se reintenta nunca solo.
+        console.error(
+          `[releaser] NECESITA REVISION MANUAL: milestone ${milestoneId} en converting con un cambio de moneda sin confirmar.`,
+        );
+        return { kind: "needs_review", reason: "Cambio de moneda sin confirmar: revisar a mano" };
+      }
+      return resumePayoutAfterConversion(deps, milestoneId, BigInt(String(swap.amount_out)));
+    }
+    // Sin pago ni cambio activos: el hito quedó trabado sin plata en camino. Se reabre para reintentar.
     const reopen = await db
       .from("milestones")
       .update({ status: "approved" })
@@ -218,6 +418,65 @@ async function reconcile(deps: ReleaserDeps, milestoneId: string): Promise<Relea
   const receipt = await chain.getReceipt(hash).catch(() => null);
   if (!receipt) return { kind: "in_progress" };
   return settle(deps, movement.id as string, milestoneId, hash, receipt.status, BigInt(String(movement.amount_out)));
+}
+
+/**
+ * Ya hay un cambio de moneda activo para este hito. Si está confirmado (el pago falló y el hito se reabrió),
+ * se reserva el hito y se paga lo que llegó, SIN cambiar otra vez. Si no, otra corrida lo está haciendo.
+ */
+async function resumeIfAlreadyConverted(deps: ReleaserDeps, milestoneId: string): Promise<ReleaseResult> {
+  const { db } = deps;
+  const conversion = await db
+    .from("movements")
+    .select("status, amount_out::text")
+    .eq("milestone_id", milestoneId)
+    .eq("kind", "conversion")
+    .neq("status", "failed")
+    .maybeSingle();
+  if (conversion.error) fail("buscar el cambio de moneda", conversion.error);
+  const swap = conversion.data as Row | null;
+  if (!swap || swap.status !== "confirmed") return { kind: "in_progress" };
+
+  const claim = await db
+    .from("milestones")
+    .update({ status: "converting" })
+    .eq("id", milestoneId)
+    .in("status", PAYABLE)
+    .select("id");
+  if (claim.error) fail("reservar el hito", claim.error);
+  if (!claim.data?.length) return { kind: "in_progress" };
+  return resumePayoutAfterConversion(deps, milestoneId, BigInt(String(swap.amount_out)));
+}
+
+/** El cambio ya está confirmado pero el pago no salió (se cortó la corrida): se paga lo que llegó. */
+async function resumePayoutAfterConversion(
+  deps: ReleaserDeps,
+  milestoneId: string,
+  amount: bigint,
+): Promise<ReleaseResult> {
+  const { db } = deps;
+  const found = await db.from("milestones").select("agreement_id").eq("id", milestoneId).single();
+  if (found.error) fail("buscar el hito", found.error);
+  const agreementId = (found.data as Row).agreement_id as string;
+  const agreementRes = await db
+    .from("agreements")
+    .select("payout_currency, freelancer_id")
+    .eq("id", agreementId)
+    .single();
+  if (agreementRes.error) fail("buscar el acuerdo", agreementRes.error);
+  const agreement = agreementRes.data as Row;
+  const userRes = await db.from("users").select("wallet").eq("id", agreement.freelancer_id).single();
+  if (userRes.error) fail("buscar a la freelancer", userRes.error);
+  const wallet = (userRes.data as Row).wallet as string;
+  if (!isAddress(wallet)) return { kind: "no_freelancer_wallet" };
+  return sendPayout(deps, {
+    milestoneId,
+    agreementId,
+    currency: agreement.payout_currency as TokenSymbol,
+    wallet,
+    amount,
+    claim: false,
+  });
 }
 
 async function settle(

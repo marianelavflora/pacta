@@ -18,6 +18,12 @@ export type DexConfig = {
   usdt: { address: Address; decimals: 6 };
   /** Fee (en millonésimos) de la pool moneda/USDT. Una moneda sin pool no tiene ruta por Uniswap. */
   poolFee: Partial<Record<TokenSymbol, number>>;
+  /**
+   * Contratos de Textile con los que el agente puede operar (address book oficial, 2026-11-08):
+   * el LimitOrderReactor (donde se liquida el swap) y el VaultOrderExecutor. La calldata de cada
+   * swap la arma la API de Textile y se firma con la clave del agente: solo se acepta si apunta acá.
+   */
+  textileContracts: Address[];
 };
 
 const DEX: Partial<Record<ChainName, DexConfig>> = {
@@ -26,6 +32,10 @@ const DEX: Partial<Record<ChainName, DexConfig>> = {
     usdt: { address: "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e", decimals: 6 },
     // Solo wARS/USDT y wBRL/USDT (0,01 %). Para wMXN no hay pool.
     poolFee: { wARS: 100, wBRL: 100 },
+    textileContracts: [
+      "0xa9AA0a64769cBed4d3B1Ceb4Df01CdE915C235b3", // LimitOrderReactor
+      "0x01b006d5c687bde182aa36F542f1f014144742e2", // VaultOrderExecutor
+    ],
   },
 };
 

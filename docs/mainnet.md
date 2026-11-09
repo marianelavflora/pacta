@@ -142,6 +142,15 @@ Montos **mínimos**. Para la primera vez, un acuerdo en la **misma moneda** (wAR
 
 > `npm run tag:smoke` **solo corre en testnet**: no sirve para mainnet. En mainnet se usa `tag:verify` sobre transacciones reales.
 
+### Conversión entre monedas (Textile)
+
+Si el cliente deposita en una moneda y la freelancera cobra en otra, el liberador cambia con Textile antes de pagar (4 transacciones: 2 aprobaciones y 2 swaps, todas con el tag del equipo). Antes de la primera prueba:
+
+1. **Correr la migración** `supabase/migrations/0003_movements_details.sql` en el SQL Editor de Supabase (`alter table movements add column if not exists details jsonb;`). Sin esa columna el cambio falla antes de mover plata.
+2. La wallet del agente necesita CELO (comisiones). La plata que se cambia es la del depósito del cliente.
+3. Montos mínimos: Textile pide al menos ~US$1 por tramo.
+4. Si un cambio queda a medias, el hito queda en `converting` y el log dice `NECESITA REVISION MANUAL`: puede haber USDT del agente en el medio. Mirá la wallet del agente en CeloScan antes de tocar nada. Nada se reintenta solo.
+
 ## 7. Si algo sale mal
 
 - **Frenar al agente:** en Vercel, borrá `APPROVED_MAINNET` de Production y redeployá. En mainnet el agente no opera sin esa variable.
