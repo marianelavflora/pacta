@@ -252,7 +252,7 @@ const HUNDRED = BigInt(100);
 const RATE_DECIMALS = BigInt(12);
 
 /** amountOut/amountIn como decimal con 12 decimales, para guardar en `fx_rate`. */
-function rateText(amountIn: bigint, amountOut: bigint): string {
+export function rateText(amountIn: bigint, amountOut: bigint): string {
   const scale = BigInt(10) ** RATE_DECIMALS;
   const scaled = (amountOut * scale) / amountIn;
   const whole = scaled / scale;

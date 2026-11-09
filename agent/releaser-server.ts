@@ -31,31 +31,45 @@ const RECEIPT_TIMEOUT_MS = 60_000;
  * y un acuerdo con monedas distintas queda en `needs_conversion`. Toda transacción sale por el cliente
  * único del agente (con el tag del equipo).
  */
-function buildConverter(
-  wallet: ReturnType<typeof getAgentWalletClient>,
-  pub: ReturnType<typeof getPublicClient>,
-): Converter | undefined {
+/** Las dependencias reales del cambio con Textile (solo mainnet), o undefined si la red no tiene Textile. */
+export function getTextileSwapDeps(): TextileSwapDeps | undefined {
   const dex = getDexConfig();
   if (!dex) return undefined;
+  const pub = getPublicClient();
   const agent = getAgentAddress();
+  // La wallet se arma recién cuando hay que firmar o mandar algo: en mainnet armarla exige la aprobación
+  // de Mavi (APPROVED_MAINNET), y un ensayo que solo lee no tiene por qué pedirla.
+  let walletClient: ReturnType<typeof getAgentWalletClient> | undefined;
+  const wallet = () => (walletClient ??= getAgentWalletClient());
 
-  const swapDeps: TextileSwapDeps = {
+  return {
     chainId: getChain().id,
     agent,
     allowedContracts: dex.textileContracts,
     chain: {
-      balanceOf: (token) =>
-        pub.readContract({ address: token, abi: erc20Abi, functionName: "balanceOf", args: [agent] }),
+      balanceOf: (token, blockNumber) =>
+        pub.readContract({ address: token, abi: erc20Abi, functionName: "balanceOf", args: [agent], blockNumber }),
       allowance: (token, spender) =>
         pub.readContract({ address: token, abi: erc20Abi, functionName: "allowance", args: [agent, spender] }),
-      send: ({ to, data }) => wallet.sendTransaction({ to, data, value: BigInt(0) }),
+      send: ({ to, data }) => wallet().sendTransaction({ to, data, value: BigInt(0) }),
       waitForReceipt: async (hash) => {
         const r = await pub.waitForTransactionReceipt({ hash, timeout: RECEIPT_TIMEOUT_MS });
-        return { status: r.status };
+        return { status: r.status, blockNumber: r.blockNumber };
       },
-      signTypedData: (typed) => wallet.signTypedData(typed),
+      signTypedData: (typed) => wallet().signTypedData(typed),
     },
   };
+}
+
+/**
+ * El cambio de moneda con Textile (PAC-32). Solo existe en mainnet: en testnet no hay Textile, no se arma
+ * y un acuerdo con monedas distintas queda en `needs_conversion`. Toda transacción sale por el cliente
+ * único del agente (con el tag del equipo).
+ */
+function buildConverter(): Converter | undefined {
+  const dex = getDexConfig();
+  const swapDeps = getTextileSwapDeps();
+  if (!dex || !swapDeps) return undefined;
 
   return {
     estimate: async (from, to, amountIn) => {
@@ -94,7 +108,7 @@ export function getReleaserDeps(): ReleaserDeps {
     tokenAddress: (currency) => getToken(currency).address,
     // Tope opcional por pago y por moneda, en unidades enteras del token (ej. "500"). Vacío = sin tope.
     maxPayoutByCurrency,
-    converter: buildConverter(wallet, pub),
+    converter: buildConverter(),
     chain: {
       balanceOf: (token: Address, owner: Address) =>
         pub.readContract({

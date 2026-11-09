@@ -6,6 +6,7 @@ import { erc20Abi } from "@/lib/chain/tokens";
 import {
   convertViaTextile,
   executeLeg,
+  receivedInBlock,
   TextileSwapError,
   type LegRecord,
   type SwapChain,
@@ -249,6 +250,36 @@ describe("un tramo con Textile", () => {
     const approval = decodeFunctionData({ abi: erc20Abi, data: chain.sent[0].data });
     expect(approval.functionName).toBe("approve");
     expect(Object.keys(chain.sent[1]).sort()).toEqual(["data", "to"]);
+  });
+});
+
+describe("lectura del saldo recibido", () => {
+  it("si el RPC contesta atrasado con lo último, lee el saldo por número de bloque y no frena (bug real del 2026-11-09)", async () => {
+    // Reproduce lo que pasó en mainnet: justo después del recibo, una lectura al día todavía no veía el swap.
+    const chain = fakeChain({ [FROM.toLowerCase()]: BigInt(100) * E18 }, { [USDT]: BigInt(20) * E6 });
+    const byBlock: Record<string, bigint> = { "99": BigInt(0), "100": BigInt(20) * E6 };
+    (chain.balanceOf as ReturnType<typeof vi.fn>).mockImplementation(async (token: Address, block?: bigint) => {
+      if (token.toLowerCase() === FROM.toLowerCase()) return BigInt(100) * E18;
+      return block === undefined ? BigInt(0) : byBlock[String(block)];
+    });
+    (chain.waitForReceipt as ReturnType<typeof vi.fn>).mockResolvedValue({ status: "success", blockNumber: BigInt(100) });
+    const ok = quotedResponse({ sellToken: FROM, takerPays: BigInt(100) * E18, buyAmount: BigInt(20) * E6 });
+    const { deps } = makeDeps(chain, [json(ok)]);
+
+    const result = await executeLeg(deps, leg, noRecord);
+
+    expect(result.received).toBe(BigInt(20) * E6);
+  });
+
+  it("si el nodo todavía no tiene el bloque, espera y reintenta", async () => {
+    const chain = fakeChain({}, {});
+    let calls = 0;
+    (chain.balanceOf as ReturnType<typeof vi.fn>).mockImplementation(async (_token: Address, block?: bigint) => {
+      if (calls++ < 2) throw new Error("header not found");
+      return block === BigInt(100) ? BigInt(20) * E6 : BigInt(0);
+    });
+    const { deps } = makeDeps(chain, []);
+    expect(await receivedInBlock(deps, USDT, BigInt(100))).toBe(BigInt(20) * E6);
   });
 });
 
