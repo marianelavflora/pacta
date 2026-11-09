@@ -35,7 +35,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const quote = await getBestQuote(from, to);
+    const amountIn = amount === null ? undefined : BigInt(amount);
+    const quote = await getBestQuote(from, to, undefined, amountIn);
     return Response.json(
       {
         from,
@@ -50,7 +51,7 @@ export async function GET(request: Request) {
         diffBasisPoints: quote.diffBasisPoints,
         ...(amount === null
           ? {}
-          : { amountOut: convertUnits(BigInt(amount), quote.rate).toString() }),
+          : { amountOut: convertUnits(amountIn!, quote.rate).toString() }),
         updatedAt: new Date().toISOString(),
       },
       // Un minuto en la red de Vercel alcanza: el precio de referencia ya se guarda cinco.

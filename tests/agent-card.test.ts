@@ -36,8 +36,14 @@ describe("agent card (PAC-44)", () => {
     expect(new URL(card.image as string).origin).toBe(new URL(web.endpoint).origin);
   });
 
-  it("registrations está vacío hasta que se registre el agente (PAC-45)", () => {
-    expect(card.registrations).toEqual([]);
+  it("registrations trae el registro de mainnet del agente (PAC-45)", () => {
+    // El agente se registró el 2026-11-09 en Celo mainnet. El agentId de testnet no va a la card de producción.
+    expect(card.registrations).toEqual([
+      {
+        agentId: 10058,
+        agentRegistry: "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      },
+    ]);
   });
 
   it("no incluye claves ni datos privados", () => {

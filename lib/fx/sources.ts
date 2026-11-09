@@ -10,9 +10,25 @@ export type RouteName = "reference" | "textile" | "dex";
 
 export type RateSource = {
   name: RouteName;
-  /** Cuántas unidades de `to` valen 1 unidad de `from`, como rate (ver math.ts). */
-  getRate: (from: FxCurrency, to: FxCurrency) => Promise<bigint>;
+  /**
+   * Cuántas unidades de `to` valen 1 unidad de `from`, como rate (ver math.ts).
+   * `amountIn` (unidades mínimas de `from`) importa en las rutas reales: el precio cambia con el
+   * tamaño. Sin monto se cotiza uno de referencia (`probeAmount`). La referencia lo ignora.
+   */
+  getRate: (from: FxCurrency, to: FxCurrency, amountIn?: bigint) => Promise<bigint>;
 };
+
+// Monto con el que se cotiza cuando nadie pasa uno: unos US$ 5 a 20, que alcanza para superar el
+// mínimo de Textile (~US$ 1) sin mover las pools chicas. En unidades enteras de cada moneda.
+const PROBE_UNITS: Record<FxCurrency, bigint> = {
+  wARS: BigInt(10_000),
+  wBRL: BigInt(100),
+  wMXN: BigInt(100),
+};
+
+export function probeAmount(currency: FxCurrency): bigint {
+  return PROBE_UNITS[currency] * BigInt(10) ** BigInt(18);
+}
 
 export function isFxCurrency(value: unknown): value is FxCurrency {
   return (
@@ -71,35 +87,3 @@ export const referenceSource: RateSource = {
     return rate;
   },
 };
-
-// ---------- Rutas reales de conversión ----------
-// Todavía no están conectadas: Textile necesita credenciales que no tenemos y el DEX de Celo no
-// tiene pools para los tokens de prueba. Quedan declaradas para enchufarlas sin tocar el cotizador:
-// cuando haya una implementación, se reemplaza `getRate` y la ruta empieza a competir sola.
-
-function notConnected(
-  name: Exclude<RouteName, "reference">,
-  reason: string,
-): RateSource {
-  return {
-    name,
-    async getRate() {
-      throw new Error(`${name}: ${reason}`);
-    },
-  };
-}
-
-export const textileSource = notConnected(
-  "textile",
-  "falta la integración (credenciales de Textile)",
-);
-export const dexSource = notConnected(
-  "dex",
-  "falta la integración con el DEX de Celo",
-);
-
-export const defaultSources: readonly RateSource[] = [
-  textileSource,
-  dexSource,
-  referenceSource,
-];

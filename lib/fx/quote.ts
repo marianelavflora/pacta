@@ -1,9 +1,9 @@
 // Cotizador: de todas las rutas disponibles elige la que más le paga a la freelancer y la compara
 // con el precio de referencia. Lógica pura sobre fuentes intercambiables (se prueba sin red).
 
+import { defaultSources } from "./default-sources";
 import { diffBasisPoints, RATE_SCALE } from "./math";
 import {
-  defaultSources,
   type FxCurrency,
   type RateSource,
   type RouteName,
@@ -28,13 +28,20 @@ export class NoQuoteError extends Error {
 
 type Outcome = { source: RateSource; rate: bigint };
 
+// Guarda contra precios absurdos (pool desbalanceada, dato roto): una ruta real que se aleja más de
+// 15 % de la referencia, para un lado o para el otro, no es una oferta y se descarta. El margen es
+// amplio y simétrico a propósito: el mercado cripto de pesos cotiza ~5 a 7 % distinto del oficial
+// (la referencia es el oficial), así que al comprar o al vender pesos la brecha cae de cada lado.
+const MAX_DISTANCE_FROM_REFERENCE_BP = 1500;
+
 async function askEverySource(
   from: FxCurrency,
   to: FxCurrency,
   sources: readonly RateSource[],
+  amountIn?: bigint,
 ): Promise<Outcome[]> {
   const settled = await Promise.allSettled(
-    sources.map((source) => source.getRate(from, to)),
+    sources.map((source) => source.getRate(from, to, amountIn)),
   );
   const outcomes: Outcome[] = [];
   settled.forEach((result, index) => {
@@ -44,11 +51,17 @@ async function askEverySource(
   return outcomes;
 }
 
-/** La mejor cotización para pasar de `from` a `to`. Si ninguna ruta contesta, lanza NoQuoteError. */
+function isPlausible(rate: bigint, reference: bigint): boolean {
+  const diff = diffBasisPoints(rate, reference);
+  return Math.abs(diff) <= MAX_DISTANCE_FROM_REFERENCE_BP;
+}
+
+/** La mejor cotización para pasar de `from` a `to` (por `amountIn` unidades mínimas, si se sabe). Si ninguna ruta contesta, lanza NoQuoteError. */
 export async function getBestQuote(
   from: FxCurrency,
   to: FxCurrency,
   sources: readonly RateSource[] = defaultSources,
+  amountIn?: bigint,
 ): Promise<BestQuote> {
   // Misma moneda de los dos lados: no hay nada que convertir.
   if (from === to) {
@@ -60,12 +73,15 @@ export async function getBestQuote(
     };
   }
 
-  const outcomes = await askEverySource(from, to, sources);
+  const outcomes = await askEverySource(from, to, sources, amountIn);
   const reference = outcomes.find(
     (outcome) => outcome.source.name === "reference",
   );
+  // Sin referencia no hay con qué contrastar: la ruta real se acepta (solo para mostrar).
   const realRoutes = outcomes.filter(
-    (outcome) => outcome.source.name !== "reference",
+    (outcome) =>
+      outcome.source.name !== "reference" &&
+      (!reference || isPlausible(outcome.rate, reference.rate)),
   );
 
   // Entre las rutas reales gana la que más paga; si no hay ninguna, sirve la de referencia.
