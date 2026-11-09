@@ -15,7 +15,7 @@
 
 ---
 
-> **Status:** built for the [Agents on Open Rails](docs/hackathon/overview.md) hackathon (Loops House × Celo × Ripio). **Live on Celo mainnet** at [pacta-dun.vercel.app](https://pacta-dun.vercel.app): full milestone payments have run on mainnet with the team attribution tag — including a **cross-currency one**: the client deposited wARS and the freelancer was paid in wBRL, converted onchain by the agent through Textile (wARS → USDT → wBRL, no dollar account involved for the users). The agent also has an ERC-8004 identity. Sections marked *pending* are not done yet.
+> **Status:** built for the [Agents on Open Rails](docs/hackathon/overview.md) hackathon (Loops House × Celo × Ripio). **Live on Celo mainnet** at [pacta-dun.vercel.app](https://pacta-dun.vercel.app): full milestone payments have run on mainnet with the team attribution tag — including a **cross-currency one**: the client deposited wARS and the freelancer was paid in wBRL, converted onchain by the agent through Textile (wARS → USDT → wBRL, no dollar account involved for the users). The agent also has an ERC-8004 identity. Only the demo video is still *pending*. **Reviewing this repo?** Jump to [Evidence for judges](#evidence-for-judges).
 
 ## The problem
 
@@ -118,7 +118,7 @@ stateDiagram-v2
   end note
 ```
 
-For the MVP the agent wallet acts as the vault, with a cap per agreement and a daily payout cap. An onchain escrow contract is a stretch goal.
+For the MVP the agent wallet acts as the vault (no escrow contract), with a payout cap per milestone for each currency (`MAX_PAYOUT_PER_MILESTONE_ARS/_BRL/_MXN`; on mainnet the agent refuses to pay in a currency that has no cap). An onchain escrow contract is a stretch goal.
 
 ## Stack
 
@@ -136,7 +136,7 @@ For the MVP the agent wallet acts as the vault, with a cap per agreement and a d
 | Database | Supabase (Postgres) |
 | Scheduled jobs | Vercel Cron |
 | Alerts | Telegram (official Bot API) + email with Resend |
-| Gas | Paid in CELO by the agent wallet (`feeCurrency` is supported by the wallet client but not used yet) |
+| Gas | Paid in CELO by the agent wallet. The wallet client accepts `feeCurrency` per transaction (Celo fee abstraction) but we do not use it yet: all mainnet transactions so far paid gas in CELO |
 
 ## Onchain
 
@@ -168,6 +168,50 @@ For the MVP the agent wallet acts as the vault, with a cap per agreement and a d
 The agent only signs swap calldata that points at Textile's official contracts and an exact approval, and a conversion that stops halfway is resumed automatically by the agent (only the missing leg, never the one already done, with an attempt limit; see `npm run conversion:resume` for the manual version).
 
 You can check the tag of any transaction with `NEXT_PUBLIC_CHAIN=celo npm run tag:verify -- <tx hash>` (read-only).
+
+## Evidence for judges
+
+Everything below is in this public repo (default branch `main`) and checkable on Celoscan.
+
+| Question | Answer |
+|---|---|
+| Is it on mainnet? | Yes. Production runs with `NEXT_PUBLIC_CHAIN=celo` (chain 42220); the transaction hashes are in [Onchain](#onchain). Local development and PR previews run on Celo Sepolia, and a guard in the releaser (`onlyThisNetwork` in [`agent/releaser.ts`](agent/releaser.ts)) makes sure a testnet agreement can never be paid with mainnet money. |
+| Which attribution tag? | `celo_dc3ce5f39b37`, the **team** tag shown on our Loops event page. It is set once in the single wallet client ([`lib/chain/wallet.ts`](lib/chain/wallet.ts), `withAttribution`) and in the browser deposit ([`lib/chain/deposit.ts`](lib/chain/deposit.ts), `dataSuffix`). Verify any hash: `NEXT_PUBLIC_CHAIN=celo npm run tag:verify -- <tx hash>`. |
+| ERC-8004 identity | Registered on Celo mainnet from the agent wallet: **agentId `10058`** in the Identity Registry above. The card ([`public/agent-card.json`](public/agent-card.json)) carries the `agentId`, and `setAgentURI` points the on-chain identity to the published card. Registration script: [`scripts/register-agent.ts`](scripts/register-agent.ts) (`npm run agent:register`). |
+| Where is the agent logic? | [`agent/`](agent): `vault.ts` (deposits), `reminders.ts` (day 3 and day 6), `releaser.ts` (approved/expired milestones, caps, idempotency), `resume-conversion.ts` (recovers a half-done swap). FX in [`lib/fx/`](lib/fx), chain in [`lib/chain/`](lib/chain), schema in [`supabase/migrations/`](supabase/migrations), API in [`app/api/`](app/api). |
+| Tests | `npm test` (Vitest). Each test file is described in [`tests/README.md`](tests/README.md); the agent has its own suites in [`tests/agent/`](tests/agent). |
+
+### Textile FX integration (the conversion step)
+
+There is no direct wARS/wBRL corridor, so the agent converts in two legs through USDT, using Textile's RFQ API (`https://api.textilecredit.com/v2`):
+
+1. **Indicative price** (`POST /rfq/preview`, free, no key): used by the quoter to compare routes ([`lib/fx/textile.ts`](lib/fx/textile.ts)). It is compared against Uniswap v3 on Celo and a reference rate, and any route more than 15% away from the reference is discarded.
+2. **Firm quote** (`POST /rfq/request`) signed with a `takerProof` (EIP-712) from the agent wallet, then an exact token approval, then the swap, then wait for the receipt ([`lib/fx/textile-swap.ts`](lib/fx/textile-swap.ts)). Done once per leg, so 4 transactions per conversion, all tagged.
+3. **Safety:** the calldata comes from Textile's API and is signed with the agent key, so it is only accepted if it targets Textile's official LimitOrderReactor / VaultOrderExecutor with value 0 and an exact approval ([`lib/chain/dex.ts`](lib/chain/dex.ts)). Leg 2 must return at least 90% of the estimate.
+
+**Real example on mainnet** (the table in [Onchain](#onchain)): 3,000 wARS → 1.8073 USDT (leg 1) → 10.054 wBRL (leg 2), an effective 1 wARS ≈ 0.00335 wBRL. The same page links all six transactions. `npm run fx:quote -- wARS wBRL 3000` prints the live quotes of every route (read-only, no money moves).
+
+### Autonomy: reminders, auto-release and payments
+
+- `vercel.json` schedules `/api/cron/releaser` (09:00 UTC) and `/api/cron/vault` (09:30 UTC) once a day (the maximum on Vercel Hobby; Vercel sends `CRON_SECRET` as a Bearer token). The releaser first runs the reminders (`delivered` for 3 days → `reminded` with a second alert; 3 more days → `expired`, auto-release) and then pays everything `approved` or `expired`.
+- Payment does not wait for the cron: when the client signs the approval, `POST /api/milestones/[id]/approve` pays right away.
+- Payments are idempotent: a `pending` movement with a unique index per milestone is saved before any money moves, so running the task twice never pays twice. Each state change is recorded in `movements` and shown on the receipt.
+- To watch the day-3 / day-6 logic in minutes instead of days, set `TIME_UNIT=minutes` (tests: [`tests/agent/reminders.test.ts`](tests/agent/reminders.test.ts)).
+- Honest limit: the Hobby plan only allows daily crons, so a milestone can wait up to ~24 h after its deadline to be released. A recorded cron run and its transactions will be shown in the demo video.
+
+### Who it is for and how a person with no wallet gets in
+
+- **Target user:** freelancers in Argentina who bill clients in Brazil or Mexico (design, development, writing) and today lose several percent on BRL → USD → ARS plus platform fees, or wait weeks for an invoice. The percentages are not benchmarked yet, so we do not claim a figure; the receipt shows the real rate and amounts of every payment instead.
+- **Screens:** amounts are shown in ARS / BRL / MXN, never in gas or hashes; texts are in plain Rioplatense Spanish. Mobile first: inside MiniPay the wallet connects by itself.
+- **Wallet:** there is no login; the wallet is the identity. A person without one installs MiniPay (Opera Mini), Valora or MetaMask and the app opens the connect sheet; signatures (approve, deliver) cost no gas. The client only needs the stablecoin and a little CELO for the deposit. Wallet-less onboarding (email login) is planned, not built.
+- **Real users:** we are onboarding independent freelancers and clients (wallets we did not create or fund) during the last week; counts and links will be added here once they are verified onchain, not before.
+
+### After the hackathon
+
+1. Move production to its own Supabase project and an escrow contract instead of the agent-wallet vault (see [`docs/mainnet.md`](docs/mainnet.md)).
+2. Add an email login so people without a wallet can start, and keep alerts on the Telegram bot we already run.
+3. Onboard Argentine freelancer communities first, then Brazilian and Mexican agencies as clients, and add wMXN corridors.
+4. Revenue idea: a small fee per released milestone, shown on the receipt next to the FX rate (not charged today).
 
 ## Run it locally
 

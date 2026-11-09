@@ -9,5 +9,5 @@ Who it's for: freelancers in Argentina (designers, developers, writers) who work
 
 What it does: the freelancer describes the job in plain words and the agent turns it into milestones with amounts and review deadlines. The client deposits the full amount upfront in their own Ripio stablecoin (for example wBRL), and the agent holds it as a guarantee. When the client approves a delivery, the agent gets the best FX quote, converts that tranche and pays the freelancer in wARS, with a receipt showing the rate and the onchain transactions. If the client doesn't answer in 3 days, the agent sends a reminder over Telegram, and after 3 more days it releases the payment on its own.
 
-Built on Celo mainnet with Ripio wFIAT (wARS, wBRL, wMXN), Textile for FX, an ERC-8004 agent identity, and the Claude API.
+Built on Celo mainnet with Ripio wFIAT (wARS, wBRL, wMXN), Textile for FX, an ERC-8004 agent identity, and the Gemini API for the intake chat.
 ```
