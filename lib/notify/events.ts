@@ -56,6 +56,27 @@ async function load(db: SupabaseClient, agreementId: string, milestoneId?: strin
   return { agreement: a, freelancer: user.data as unknown as Row, milestone };
 }
 
+/**
+ * Chats de Telegram de las dos partes, si se suscribieron al bot. Va aparte de `load` a propósito:
+ * si la migración 0004 todavía no corrió, la columna no existe y los avisos siguen saliendo por mail.
+ */
+export async function loadTelegramChats(
+  db: SupabaseClient,
+  agreementId: string,
+  freelancerId: unknown,
+): Promise<Record<Role, string | null>> {
+  const chats: Record<Role, string | null> = { client: null, freelancer: null };
+  try {
+    const a = await db.from("agreements").select("client_telegram_chat_id").eq("id", agreementId).maybeSingle();
+    if (!a.error) chats.client = ((a.data as Row | null)?.client_telegram_chat_id as string | null) ?? null;
+    const u = await db.from("users").select("telegram_chat_id").eq("id", freelancerId).maybeSingle();
+    if (!u.error) chats.freelancer = ((u.data as Row | null)?.telegram_chat_id as string | null) ?? null;
+  } catch {
+    // Sin chats: el aviso sale por mail.
+  }
+  return chats;
+}
+
 export async function notifyEvent(
   db: SupabaseClient,
   event: NotifyEvent,
@@ -68,9 +89,18 @@ export async function notifyEvent(
     const rawAmount = milestone?.amount ?? agreement.total_amount;
     const amount = `${currencySymbol(currency)} ${formatUnits(BigInt(String(rawAmount)))}`;
 
+    const chats = await loadTelegramChats(db, agreementId, agreement.freelancer_id);
     const recipients: Record<Role, Recipient> = {
-      client: { name: "cliente", email: (agreement.client_contact as string | null) ?? null },
-      freelancer: { name: freelancer.name as string, email: (freelancer.email as string | null) ?? null },
+      client: {
+        name: "cliente",
+        email: (agreement.client_contact as string | null) ?? null,
+        telegramChatId: chats.client,
+      },
+      freelancer: {
+        name: freelancer.name as string,
+        email: (freelancer.email as string | null) ?? null,
+        telegramChatId: chats.freelancer,
+      },
     };
     return await Promise.all(
       AUDIENCE[event].map((role) =>

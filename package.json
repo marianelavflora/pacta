@@ -13,6 +13,7 @@
     "tokens:deploy": "tsx --conditions=react-server scripts/deploy-test-tokens.ts",
     "tag:smoke": "tsx --conditions=react-server scripts/tag-smoke.ts",
     "tag:verify": "tsx --conditions=react-server scripts/verify-tag.ts",
+    "telegram:webhook": "tsx scripts/telegram-set-webhook.ts",
     "e2e:sprint1": "tsx --conditions=react-server scripts/e2e-sprint1.ts",
     "agent:register": "tsx --conditions=react-server scripts/register-agent.ts",
     "fx:quote": "tsx --conditions=react-server scripts/fx-quote.ts",
