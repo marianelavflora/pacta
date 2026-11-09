@@ -9,6 +9,9 @@ import { releaseApproved, releaseMilestone } from "@/agent/releaser";
 import { runReminders } from "@/agent/reminders";
 import { getReleaserDeps } from "@/agent/releaser-server";
 
+// Un cambio de moneda con Textile son 4 transacciones y esperas de hasta ~70 s por cotización: más que el tope por defecto.
+export const maxDuration = 300;
+
 function isAuthorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
