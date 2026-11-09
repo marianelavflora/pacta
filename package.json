@@ -15,7 +15,8 @@
     "tag:verify": "tsx --conditions=react-server scripts/verify-tag.ts",
     "e2e:sprint1": "tsx --conditions=react-server scripts/e2e-sprint1.ts",
     "agent:register": "tsx --conditions=react-server scripts/register-agent.ts",
-    "fx:quote": "tsx --conditions=react-server scripts/fx-quote.ts"
+    "fx:quote": "tsx --conditions=react-server scripts/fx-quote.ts",
+    "conversion:resume": "tsx --conditions=react-server scripts/resume-conversion.ts"
   },
   "dependencies": {
     "@celo/attribution-tags": "^0.5.0",
