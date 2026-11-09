@@ -33,8 +33,11 @@ export type ReleaserDeps = {
   chain: ReleaserChain;
   agentAddress: Address;
   tokenAddress: (currency: TokenSymbol) => Address;
-  /** Tope de seguridad por pago, en unidades mínimas (opcional). Los topes completos son PAC-46. */
-  maxPayoutPerMilestone?: bigint;
+  /**
+   * Tope de seguridad por pago según la moneda de cobro, en unidades mínimas (opcional).
+   * Un tope por moneda porque 1 wBRL y 1 wARS valen muy distinto. Los topes completos son PAC-46.
+   */
+  maxPayoutByCurrency?: Partial<Record<TokenSymbol, bigint>>;
   /** Aviso "hito pagado" (PAC-42). Opcional: un aviso que falla nunca frena ni deshace un pago. */
   onPaid?: (agreementId: string, milestoneId: string) => Promise<unknown>;
 };
@@ -102,9 +105,8 @@ export async function releaseMilestone(deps: ReleaserDeps, milestoneId: string):
   const wallet = (userRes.data as Row).wallet as string;
   if (!isAddress(wallet)) return { kind: "no_freelancer_wallet" };
 
-  if (deps.maxPayoutPerMilestone !== undefined && amount > deps.maxPayoutPerMilestone) {
-    return { kind: "over_cap" };
-  }
+  const cap = deps.maxPayoutByCurrency?.[currency];
+  if (cap !== undefined && amount > cap) return { kind: "over_cap" };
 
   const token = deps.tokenAddress(currency);
   if ((await chain.balanceOf(token, deps.agentAddress)) < amount) return { kind: "insufficient_balance" };

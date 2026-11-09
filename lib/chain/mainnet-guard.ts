@@ -6,6 +6,10 @@
 
 import { celo } from "viem/chains";
 
+import type { TokenSymbol } from "@/lib/chain/tokens";
+
+const TOKEN_SYMBOLS: TokenSymbol[] = ["wARS", "wBRL", "wMXN"];
+
 const APPROVED_VALUES = ["yes", "true", "1"];
 
 export function isMainnet(chainId: number): boolean {
@@ -25,13 +29,20 @@ export function assertMainnetApproved(
   );
 }
 
-/** En mainnet el tope por pago es obligatorio: sin MAX_PAYOUT_PER_MILESTONE no se paga. */
+/**
+ * En mainnet cada moneda tiene que tener su tope por pago: sin tope no se paga en esa moneda.
+ * El tope sale de MAX_PAYOUT_PER_MILESTONE_<MONEDA> o, si no está, de MAX_PAYOUT_PER_MILESTONE.
+ */
 export function assertPayoutCapForMainnet(
   chainId: number,
-  maxPayout: bigint | undefined,
+  capsByCurrency: Partial<Record<TokenSymbol, bigint>>,
 ): void {
-  if (!isMainnet(chainId) || maxPayout !== undefined) return;
+  if (!isMainnet(chainId)) return;
+  const missing = TOKEN_SYMBOLS.filter(
+    (symbol) => capsByCurrency[symbol] === undefined,
+  );
+  if (missing.length === 0) return;
   throw new Error(
-    "Falta MAX_PAYOUT_PER_MILESTONE: en mainnet el tope por pago es obligatorio.",
+    `Falta el tope por pago para ${missing.join(", ")}: en mainnet es obligatorio. Poné MAX_PAYOUT_PER_MILESTONE (para todas) o MAX_PAYOUT_PER_MILESTONE_<MONEDA> (por ejemplo MAX_PAYOUT_PER_MILESTONE_WARS).`,
   );
 }

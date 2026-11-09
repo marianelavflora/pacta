@@ -51,7 +51,7 @@ describe("freno de mainnet", () => {
 
   it("en testnet no pide nada", () => {
     expect(() => assertMainnetApproved(TESTNET, undefined)).not.toThrow();
-    expect(() => assertPayoutCapForMainnet(TESTNET, undefined)).not.toThrow();
+    expect(() => assertPayoutCapForMainnet(TESTNET, {})).not.toThrow();
   });
 
   it("en mainnet falla si no está aprobada o el valor es otro", () => {
@@ -70,10 +70,22 @@ describe("freno de mainnet", () => {
   });
 
   it("en mainnet el tope por pago es obligatorio", () => {
-    expect(() => assertPayoutCapForMainnet(MAINNET, undefined)).toThrow(
+    expect(() => assertPayoutCapForMainnet(MAINNET, {})).toThrow(
       /MAX_PAYOUT_PER_MILESTONE/,
     );
-    expect(() => assertPayoutCapForMainnet(MAINNET, BigInt(500))).not.toThrow();
+    // Con tope solo para dos monedas, falta la tercera.
+    expect(() =>
+      assertPayoutCapForMainnet(MAINNET, { wARS: BigInt(500), wBRL: BigInt(5) }),
+    ).toThrow(/wMXN/);
+    expect(() =>
+      assertPayoutCapForMainnet(MAINNET, {
+        wARS: BigInt(500),
+        wBRL: BigInt(5),
+        wMXN: BigInt(20),
+      }),
+    ).not.toThrow();
+    // En testnet no hace falta.
+    expect(() => assertPayoutCapForMainnet(11142220, {})).not.toThrow();
   });
 });
 

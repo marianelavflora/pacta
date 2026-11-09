@@ -5,9 +5,10 @@ import "server-only";
 import type { Address, Hash } from "viem";
 
 import { getDb } from "@/lib/db";
-import { erc20Abi, getToken, parseAmount } from "@/lib/chain/tokens";
+import { erc20Abi, getToken } from "@/lib/chain/tokens";
 import { getChain } from "@/lib/chain/chains";
 import { assertPayoutCapForMainnet } from "@/lib/chain/mainnet-guard";
+import { parseMaxPayoutsByCurrency } from "@/lib/chain/payout-caps";
 import {
   getAgentAddress,
   getAgentWalletClient,
@@ -18,26 +19,10 @@ import type { ReleaserDeps } from "./releaser";
 
 const RECEIPT_TIMEOUT_MS = 60_000;
 
-/** Tope opcional: vacio = sin tope; si esta mal escrito o es 0, falla (no paga) en vez de ignorarlo. */
-export function parseMaxPayout(raw: string | undefined): bigint | undefined {
-  const text = raw?.trim();
-  if (!text) return undefined;
-  if (!/^\d+(\.\d+)?$/.test(text))
-    throw new Error(
-      "MAX_PAYOUT_PER_MILESTONE invalida: usa un numero positivo, ej. 500",
-    );
-  const value = parseAmount(text);
-  if (value <= BigInt(0))
-    throw new Error("MAX_PAYOUT_PER_MILESTONE tiene que ser mayor a 0");
-  return value;
-}
-
 export function getReleaserDeps(): ReleaserDeps {
-  const maxPayoutPerMilestone = parseMaxPayout(
-    process.env.MAX_PAYOUT_PER_MILESTONE,
-  );
+  const maxPayoutByCurrency = parseMaxPayoutsByCurrency(process.env);
   // En mainnet el tope es obligatorio: sin tope no se paga.
-  assertPayoutCapForMainnet(getChain().id, maxPayoutPerMilestone);
+  assertPayoutCapForMainnet(getChain().id, maxPayoutByCurrency);
   const wallet = getAgentWalletClient();
   const pub = getPublicClient();
   const db = getDb();
@@ -46,8 +31,8 @@ export function getReleaserDeps(): ReleaserDeps {
     onPaid: (agreementId, milestoneId) => onMilestonePaid(db, agreementId, milestoneId),
     agentAddress: getAgentAddress(),
     tokenAddress: (currency) => getToken(currency).address,
-    // Tope opcional por pago, en unidades enteras del token (ej. "500"). Vacío = sin tope.
-    maxPayoutPerMilestone,
+    // Tope opcional por pago y por moneda, en unidades enteras del token (ej. "500"). Vacío = sin tope.
+    maxPayoutByCurrency,
     chain: {
       balanceOf: (token: Address, owner: Address) =>
         pub.readContract({
