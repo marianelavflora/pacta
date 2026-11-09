@@ -2,7 +2,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { decodeFunctionData, encodeFunctionData, type Address, type Hash, type Hex } from "viem";
 
-import { planResume, resumeConversion, type ResumeDeps } from "@/agent/resume-conversion";
+import {
+  MAX_RECOVERY_ATTEMPTS,
+  planResume,
+  recoverConversion,
+  resumeConversion,
+  type ResumeDeps,
+} from "@/agent/resume-conversion";
 import { erc20Abi } from "@/lib/chain/tokens";
 import type { SwapChain, TextileSwapDeps } from "@/lib/fx/textile-swap";
 import { FakeDb } from "../helpers/fake-db";
@@ -173,7 +179,7 @@ describe("recuperar un cambio a medias", () => {
     });
     it("sin tramo 1 guardado", async () => {
       const { deps } = setup({ legs: [] });
-      await expect(planResume(deps, "m1")).rejects.toThrow(/1 tramo/);
+      await expect(planResume(deps, "m1")).rejects.toThrow(/tramos guardados/);
     });
     it("tramo 1 sin hash de swap: no se sabe si salió", async () => {
       const { deps } = setup({ legs: [{ sellToken: WARS, buyToken: USDT, sellAmount: "3000" }] });
@@ -196,5 +202,80 @@ describe("recuperar un cambio a medias", () => {
       (deps.estimate as ReturnType<typeof vi.fn>).mockResolvedValue(null);
       await expect(planResume(deps, "m1")).rejects.toThrow(/ruta real/);
     });
+  });
+});
+
+describe("recoverConversion: el liberador retoma solo lo que falta", () => {
+  const LEG1 = { sellToken: WARS, buyToken: USDT, sellAmount: "3000", swapHash: LEG1_HASH, approvalHash: "0xaa" };
+  const noQuote = () => json({ data: { status: "no_quote", reason: "no_makers_online" } });
+
+  it("estado 1: con solo el tramo 1 hecho, hace el tramo 2 y deja el cambio confirmado", async () => {
+    const { deps, db, sent } = setup();
+    const outcome = await recoverConversion(deps, "m1");
+    expect(outcome).toEqual({ kind: "completed", amountOut: BigInt(10) * E18 });
+    expect(sent).toHaveLength(2); // solo aprobación + swap del tramo 2: el tramo 1 NO se repite
+    expect(db.tables.movements[0]).toMatchObject({ status: "confirmed", tx_hash: LEG2_HASH });
+  });
+
+  it("estado 2: el tramo 2 se cortó antes de swapear (sin hash de swap): lo rehace con una cotización nueva", async () => {
+    const { deps, sent } = setup({ legs: [LEG1, { sellToken: USDT, buyToken: WBRL, sellAmount: "1807300", approvalHash: "0xbb" }] });
+    expect(await recoverConversion(deps, "m1")).toMatchObject({ kind: "completed" });
+    expect(sent.length).toBeGreaterThan(0);
+  });
+
+  it("estado 3: el tramo 2 ya salió con recibo exitoso: cierra el cambio SIN mandar nada", async () => {
+    const { deps, db, sent } = setup({ legs: [LEG1, { sellToken: USDT, buyToken: WBRL, sellAmount: "1807300", swapHash: LEG2_HASH }] });
+    deps.getReceipt = vi.fn(async () => ({ status: "success" as const, blockNumber: BigInt(200) }));
+
+    const outcome = await recoverConversion(deps, "m1");
+
+    expect(outcome).toEqual({ kind: "completed", amountOut: BigInt(10) * E18 });
+    expect(sent).toHaveLength(0);
+    expect(db.tables.movements[0]).toMatchObject({ status: "confirmed", amount_out: (BigInt(10) * E18).toString() });
+  });
+
+  it("estado 4: el swap del tramo 2 se revirtió: lo reintenta (revertir no mueve plata)", async () => {
+    const { deps, sent } = setup({ legs: [LEG1, { sellToken: USDT, buyToken: WBRL, sellAmount: "1807300", swapHash: LEG2_HASH }] });
+    deps.getReceipt = vi.fn(async () => ({ status: "reverted" as const, blockNumber: BigInt(150) }));
+    expect(await recoverConversion(deps, "m1")).toMatchObject({ kind: "completed" });
+    expect(sent.length).toBeGreaterThan(0);
+  });
+
+  it("estado 5: el swap del tramo 2 todavía no tiene recibo: espera y no manda nada", async () => {
+    const { deps, sent } = setup({ legs: [LEG1, { sellToken: USDT, buyToken: WBRL, sellAmount: "1807300", swapHash: LEG2_HASH }] });
+    deps.getReceipt = vi.fn(async () => null);
+    expect(await recoverConversion(deps, "m1")).toMatchObject({ kind: "wait" });
+    expect(sent).toHaveLength(0);
+  });
+
+  it("sin forma de mirar el recibo del tramo 2, prefiere esperar a arriesgarse a swapear dos veces", async () => {
+    const { deps, sent } = setup({ legs: [LEG1, { sellToken: USDT, buyToken: WBRL, sellAmount: "1807300", swapHash: LEG2_HASH }] });
+    expect(await recoverConversion(deps, "m1")).toMatchObject({ kind: "wait" });
+    expect(sent).toHaveLength(0);
+  });
+
+  it("si el tramo 2 vuelve a fallar, anota el intento y queda a revisión (el próximo barrido lo vuelve a probar)", async () => {
+    const { deps, db, sent } = setup();
+    deps.swap.fetcher = vi.fn(async () => noQuote()) as unknown as typeof fetch;
+
+    const outcome = await recoverConversion(deps, "m1");
+
+    expect(outcome.kind).toBe("needs_review");
+    expect(sent).toHaveLength(0); // sin cotización no se mandó nada
+    expect((db.tables.movements[0].details as { recoveryAttempts: number }).recoveryAttempts).toBe(1);
+    expect(db.tables.movements[0].status).toBe("pending");
+  });
+
+  it(`pasado el tope de ${MAX_RECOVERY_ATTEMPTS} intentos no manda nada más: revisión manual`, async () => {
+    const { deps, db, sent } = setup();
+    (db.tables.movements[0].details as Record<string, unknown>).recoveryAttempts = MAX_RECOVERY_ATTEMPTS;
+    const outcome = await recoverConversion(deps, "m1");
+    expect(outcome).toMatchObject({ kind: "needs_review", reason: expect.stringMatching(/revisar a mano/) });
+    expect(sent).toHaveLength(0);
+  });
+
+  it("nunca tira error: un caso que no es retomable da needs_review", async () => {
+    const { deps } = setup({ status: "approved" });
+    await expect(recoverConversion(deps, "m1")).resolves.toMatchObject({ kind: "needs_review" });
   });
 });

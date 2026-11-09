@@ -43,6 +43,17 @@ export type Converter = {
     request: { from: TokenSymbol; to: TokenSymbol; amountIn: bigint; minAmountOut: bigint },
     onProgress: (legs: unknown[]) => Promise<void>,
   ): Promise<{ amountOut: bigint; finalTxHash: Hash; legs: unknown[] }>;
+  /**
+   * Retoma un cambio que quedó a medias (agent/resume-conversion.ts): hace solo lo que falta y nunca repite lo
+   * ya hecho. Nunca tira error. Sin esto, un cambio a medias queda a revisión manual.
+   */
+  resumePending?(
+    milestoneId: string,
+  ): Promise<
+    | { kind: "completed"; amountOut: bigint }
+    | { kind: "wait"; reason: string }
+    | { kind: "needs_review"; reason: string }
+  >;
 };
 
 export type ReleaserDeps = {
@@ -422,7 +433,17 @@ async function reconcile(deps: ReleaserDeps, milestoneId: string): Promise<Relea
     if (conversion.data) {
       const swap = conversion.data as Row;
       if (swap.status !== "confirmed") {
-        // Quedó a medias: puede haber USDT del agente en el medio. No se reintenta nunca solo.
+        // Quedó a medias: puede haber USDT del agente en el medio. Se retoma SOLO lo que falta (nunca el
+        // tramo 1 otra vez), con tope de intentos; sin conversor que sepa retomar, queda a revisión manual.
+        if (deps.converter?.resumePending) {
+          const outcome = await deps.converter.resumePending(milestoneId);
+          if (outcome.kind === "wait") return { kind: "in_progress" };
+          if (outcome.kind === "completed") return resumePayoutAfterConversion(deps, milestoneId, outcome.amountOut);
+          console.error(
+            `[releaser] NECESITA REVISION MANUAL: milestone ${milestoneId} en converting y no se pudo retomar el cambio (${outcome.reason}).`,
+          );
+          return { kind: "needs_review", reason: outcome.reason };
+        }
         console.error(
           `[releaser] NECESITA REVISION MANUAL: milestone ${milestoneId} en converting con un cambio de moneda sin confirmar.`,
         );
