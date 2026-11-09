@@ -8,6 +8,7 @@ import { ApproxPayout } from "@/components/Quote";
 import { IdBadge } from "@/components/IdBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { DepositButton } from "@/components/DepositButton";
+import { TelegramSubscribe } from "@/components/TelegramSubscribe";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAgreementByPublicId } from "@/lib/agreements";
 import { formatUnits } from "@/lib/amounts";
@@ -159,6 +160,8 @@ async function AgreementView({ id }: { id: Promise<string> }) {
           />
         </CardContent>
       </Card>
+
+      <TelegramSubscribe role="client" publicId={publicId} />
     </div>
   );
 }

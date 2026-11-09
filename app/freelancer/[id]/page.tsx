@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { DeliverDialog } from "@/components/DeliverDialog";
 import { TodayRateCard } from "@/components/Quote";
+import { TelegramSubscribe } from "@/components/TelegramSubscribe";
 import { Badge } from "@/components/ui/badge";
 import { getAgreementByPublicId } from "@/lib/agreements";
 import { formatUnits } from "@/lib/amounts";
@@ -102,7 +103,8 @@ function SummaryCard({
 async function Milestones({ id }: { id: Promise<string> }) {
   // Datos en vivo: no se leen la base ni se arma la página en el build.
   await connection();
-  const agreement = await getAgreementByPublicId(getDb(), await id);
+  const publicId = await id;
+  const agreement = await getAgreementByPublicId(getDb(), publicId);
   if (!agreement) notFound();
 
   if (agreement.milestones.length === 0) {
@@ -130,6 +132,7 @@ async function Milestones({ id }: { id: Promise<string> }) {
         savedUnits={savedUnits}
         currency={agreement.clientCurrency}
       />
+      <TelegramSubscribe role="freelancer" publicId={publicId} />
       <h2 className="text-xl font-semibold">{agreement.title}</h2>
       <ul className="flex flex-col gap-3">
         {agreement.milestones.map((m) => (

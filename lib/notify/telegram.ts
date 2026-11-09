@@ -26,6 +26,15 @@ export async function sendTelegram(
   message: Message,
   fetchImpl: typeof fetch = fetch,
 ): Promise<SendResult> {
+  return sendTelegramText(chatId, `${message.subject}\n\n${message.body}`, fetchImpl);
+}
+
+/** Manda un texto suelto (por ejemplo, la respuesta del bot al "Iniciar"). */
+export async function sendTelegramText(
+  chatId: string | number | null | undefined,
+  text: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<SendResult> {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
   if (!token) return { status: "skipped", reason: "falta TELEGRAM_BOT_TOKEN" };
   const chat = normalizeChatId(chatId);
@@ -35,7 +44,7 @@ export async function sendTelegram(
     const response = await fetchImpl(`${API}/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chat, text: `${message.subject}\n\n${message.body}` }),
+      body: JSON.stringify({ chat_id: chat, text }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const body = (await response.json().catch(() => null)) as

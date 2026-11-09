@@ -206,6 +206,8 @@ Fill in `.env.local`. Git ignores it, so your keys never reach the repo. Every v
 | `RESEND_API_KEY` | [resend.com](https://resend.com) → API Keys. |
 | `CRON_SECRET` | Any long random string, for example `openssl rand -hex 32`. |
 | `TIME_UNIT` | `days` (real deadlines) or `minutes` (to test reminders and auto-release fast). |
+| `TELEGRAM_WEBHOOK_SECRET` | A long random string you choose (letters, digits, `_` and `-`). Protects the bot webhook. |
+| `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` | The bot username without `@`. Shows the "Get alerts on Telegram" button. |
 
 You only need the variables of the part you are working on: the home page runs with an empty `.env.local`.
 
