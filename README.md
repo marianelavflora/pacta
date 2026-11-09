@@ -15,7 +15,7 @@
 
 ---
 
-> **Status:** in development for the [Agents on Open Rails](docs/hackathon/overview.md) hackathon (Loops House × Celo × Ripio). We develop on Celo Sepolia (testnet) and switch to Celo mainnet on 4 Nov 2026. Sections marked *pending* are filled in as the tickets land.
+> **Status:** built for the [Agents on Open Rails](docs/hackathon/overview.md) hackathon (Loops House × Celo × Ripio). **Live on Celo mainnet** at [pacta-dun.vercel.app](https://pacta-dun.vercel.app): a full milestone payment (deposit → delivery → approval → payout in wARS) has run on mainnet with the team attribution tag, and the agent has an ERC-8004 identity. Cross-currency conversion (Textile / Uniswap) already **quotes** live prices; settling the swap onchain is still in progress, so today the agent pays out in the currency the client deposited. Sections marked *pending* are not done yet.
 
 ## The problem
 
@@ -100,7 +100,7 @@ For the MVP the agent wallet acts as the vault, with a cap per agreement and a d
 | Database | Supabase (Postgres) |
 | Scheduled jobs | Vercel Cron |
 | Alerts | Telegram (official Bot API) + email with Resend |
-| Gas | Paid in stablecoins with `feeCurrency` |
+| Gas | Paid in CELO by the agent wallet (`feeCurrency` is supported by the wallet client but not used yet) |
 
 ## Onchain
 
@@ -111,8 +111,14 @@ For the MVP the agent wallet acts as the vault, with a cap per agreement and a d
 | wBRL | [`0xd76f5faf6888e24d9f04bf92a0c8b921fe4390e0`](https://celoscan.io/token/0xd76f5faf6888e24d9f04bf92a0c8b921fe4390e0) |
 | wMXN | [`0x337e7456b420bd3481e7fa61fa9850343d610d34`](https://celoscan.io/token/0x337e7456b420bd3481e7fa61fa9850343d610d34) |
 | ERC-8004 Identity Registry | [`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`](https://celoscan.io/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432) |
-| Agent wallet | *pending (PAC-45)* |
-| Agent ID (ERC-8004) | *pending (PAC-45)* |
+| Agent wallet (vault and payer) | [`0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`](https://celoscan.io/address/0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73) |
+| Agent ID (ERC-8004) | `10058` (owner: the agent wallet) |
+| Agent card | [`pacta-dun.vercel.app/agent-card.json`](https://pacta-dun.vercel.app/agent-card.json) |
+| Attribution tag | `celo_dc3ce5f39b37` (team tag, on every transaction the agent and the web send) |
+| First real payment on mainnet: deposit (client → agent) | [`0x32a7…f6e0`](https://celoscan.io/tx/0x32a7ef0333f49a5b962cf7d269cafcf1b7f94200717210c26eab4ad8c4d5f6e0) |
+| First real payment on mainnet: payout (agent → freelancer) | [`0xbd3c…5ec8`](https://celoscan.io/tx/0xbd3c9924040692c25c9e6c065d473808873cfcc5d916726bb829d7cad9225ec8) |
+
+You can check the tag of any transaction with `NEXT_PUBLIC_CHAIN=celo npm run tag:verify -- <tx hash>` (read-only).
 
 ## Run it locally
 
