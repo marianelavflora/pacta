@@ -284,9 +284,13 @@ describe("liberador: pagar un hito aprobado", () => {
   });
 
   it("respeta el tope opcional por pago", async () => {
-    expect((await releaseMilestone(deps({ maxPayoutPerMilestone: BigInt(50) * E18 }), "m1")).kind).toBe("over_cap");
+    expect((await releaseMilestone(deps({ maxPayoutByCurrency: { wARS: BigInt(50) * E18 } }), "m1")).kind).toBe("over_cap");
     expect(chain.transfer).not.toHaveBeenCalled();
-    expect((await releaseMilestone(deps({ maxPayoutPerMilestone: HUNDRED }), "m1")).kind).toBe("paid");
+    expect((await releaseMilestone(deps({ maxPayoutByCurrency: { wARS: HUNDRED } }), "m1")).kind).toBe("paid");
+  });
+
+  it("el tope de otra moneda no frena este pago", async () => {
+    expect((await releaseMilestone(deps({ maxPayoutByCurrency: { wBRL: BigInt(1) } }), "m1")).kind).toBe("paid");
   });
 
   it("el barrido paga los aprobados y resume el resultado", async () => {
