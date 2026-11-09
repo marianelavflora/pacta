@@ -25,6 +25,12 @@ export function parseRate(value: string | number): bigint | null {
   return rate > BigInt(0) ? rate : null;
 }
 
+/** El rate que resulta de cambiar `amountIn` por `amountOut` (los dos en unidades mínimas de 18 decimales). */
+export function rateFromAmounts(amountIn: bigint, amountOut: bigint): bigint {
+  if (amountIn <= BigInt(0) || amountOut <= BigInt(0)) throw new Error("La cotización volvió en cero");
+  return (amountOut * RATE_SCALE) / amountIn;
+}
+
 /** Cuánto vale `amount` (unidades mínimas de la moneda de origen) en la moneda de destino. */
 export function convertUnits(amount: bigint, rate: bigint): bigint {
   return (amount * rate) / RATE_SCALE;
