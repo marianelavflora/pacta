@@ -1,4 +1,5 @@
 // POST /api/milestones/[id]/deliver: la freelancer entrega un hito (PAC-22).
+import { getChain } from "@/lib/chain/chains";
 import { getDb } from "@/lib/db";
 import { deliverMilestone } from "@/lib/milestones";
 import {
@@ -37,7 +38,7 @@ export async function POST(
   }
 
   try {
-    const result = await deliverMilestone(getDb(), id, parsed.data);
+    const result = await deliverMilestone(getDb(), id, parsed.data, getChain().id);
     switch (result.kind) {
       case "not_found":
         return Response.json(
@@ -46,7 +47,7 @@ export async function POST(
         );
       case "forbidden":
         return Response.json(
-          { error: "Solo la freelancer del acuerdo puede entregar este hito" },
+          { error: "La firma no es de la billetera de la freelancer de este acuerdo" },
           { status: 403 },
         );
       case "wrong_status":

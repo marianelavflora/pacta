@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useAccount, useSignTypedData, useSwitchChain } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,19 +15,34 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getChain } from "@/lib/chain/chains";
+import { buildDeliveryTypedData } from "@/lib/chain/delivery";
+import { isUserRejection } from "@/lib/approval-ui";
 import { canDeliver, deliverErrorMessage, validateDeliveryUrl } from "@/lib/deliver";
 
 type Props = {
   milestoneId: string;
+  /** `public_id` del acuerdo y posición del hito: van en el mensaje que firma la freelancer. */
+  agreementPublicId: string;
+  position: number;
   milestoneTitle: string;
   status: string;
   freelancerWallet: string;
 };
 
 /** Botón "Marcar como entregado" + hoja con link y nota. Usa el POST de PAC-22. */
-export function DeliverDialog({ milestoneId, milestoneTitle, status, freelancerWallet }: Props) {
+export function DeliverDialog({
+  milestoneId,
+  agreementPublicId,
+  position,
+  milestoneTitle,
+  status,
+  freelancerWallet,
+}: Props) {
   const router = useRouter();
-  const { address } = useAccount();
+  const { address, chainId: walletChainId } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
+  const { signTypedDataAsync } = useSignTypedData();
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [note, setNote] = useState("");
@@ -46,11 +61,23 @@ export function DeliverDialog({ milestoneId, milestoneTitle, status, freelancerW
 
     setSending(true);
     try {
+      // La entrega se firma con la billetera de la freelancer: así nadie más puede entregar por ella.
+      const chainId = getChain().id;
+      if (walletChainId !== chainId) await switchChainAsync({ chainId });
+      const signature = await signTypedDataAsync(
+        buildDeliveryTypedData({
+          chainId,
+          agreementPublicId,
+          milestoneId,
+          position,
+          deliveryUrl: url,
+        }),
+      );
       const response = await fetch(`/api/milestones/${milestoneId}/deliver`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          freelancerWallet: address,
+          signature,
           deliveryUrl: url.trim(),
           ...(note.trim() ? { deliveryNote: note.trim() } : {}),
         }),
@@ -62,8 +89,12 @@ export function DeliverDialog({ milestoneId, milestoneTitle, status, freelancerW
       }
       setOpen(false);
       router.refresh();
-    } catch {
-      setError("No pudimos conectarnos. Revisá tu internet e intentá de nuevo.");
+    } catch (cause) {
+      setError(
+        isUserRejection(cause)
+          ? "No firmaste el mensaje, así que no se entregó. Probá de nuevo cuando quieras."
+          : "No pudimos conectarnos. Revisá tu internet e intentá de nuevo.",
+      );
     } finally {
       setSending(false);
     }

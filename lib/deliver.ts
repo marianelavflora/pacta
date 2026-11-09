@@ -27,7 +27,7 @@ export function validateDeliveryUrl(value: string): string | undefined {
 
 /** Mensaje amable según lo que respondió la API de entregar. */
 export function deliverErrorMessage(status: number, apiError?: string): string {
-  if (status === 403) return "Esta billetera no es la de la freelancer de este acuerdo.";
+  if (status === 403) return "La firma no es de la billetera de la freelancer de este acuerdo.";
   if (status === 404) return "No encontramos este hito. Recargá la página.";
   if (status === 409) return "Este hito todavía no se puede entregar. Recargá la página.";
   if (status === 400 && apiError) return apiError;

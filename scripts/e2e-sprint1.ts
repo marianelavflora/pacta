@@ -79,6 +79,7 @@ async function main() {
   const { erc20Abi, getToken } = await import("../lib/chain/tokens");
   const { AGENT_ADDRESS, buildDepositCalldata } = await import("../lib/chain/deposit");
   const { buildApprovalTypedData } = await import("../lib/chain/approval");
+  const { buildDeliveryTypedData } = await import("../lib/chain/delivery");
 
   if (getChainName() !== "celo-sepolia") {
     throw new Error(`Este script solo corre en Celo Sepolia (testnet). NEXT_PUBLIC_CHAIN="${getChainName()}".`);
@@ -202,14 +203,27 @@ async function main() {
   record("El liberador rechaza pedidos sin contraseña", noSecret.status === 401, `status ${noSecret.status}`);
 
   const first = milestones.find((m) => m.position === 1)!;
+  // La entrega se firma con la wallet de la freelancer (A1): decir cuál es su wallet no alcanza.
+  const deliveryFor = (url: string) =>
+    buildDeliveryTypedData({
+      chainId: chain.id,
+      agreementPublicId: publicId,
+      milestoneId: first.id,
+      position: first.position,
+      deliveryUrl: url,
+    });
+  const signDelivery = (account: typeof freelancerAccount, url: string) =>
+    createWalletClient({ account, chain, transport: http() }).signTypedData(deliveryFor(url));
+
   const strangerDeliver = await api(`/api/milestones/${first.id}/deliver`, {
-    json: { freelancerWallet: strangerAccount.address, deliveryUrl: "https://example.com/entrega" },
+    json: { signature: await signDelivery(strangerAccount, "https://example.com/entrega"), deliveryUrl: "https://example.com/entrega" },
   });
   record("Otra billetera no puede entregar el hito", strangerDeliver.status === 403, `status ${strangerDeliver.status}`);
 
   // 5. La freelancer entrega el hito 1.
+  const deliveryUrl = "https://example.com/entrega-1";
   const deliver = await api(`/api/milestones/${first.id}/deliver`, {
-    json: { freelancerWallet: freelancerAccount.address, deliveryUrl: "https://example.com/entrega-1", deliveryNote: "Primera entrega" },
+    json: { signature: await signDelivery(freelancerAccount, deliveryUrl), deliveryUrl, deliveryNote: "Primera entrega" },
   });
   record("Freelancer entrega el hito 1", deliver.status === 200 && deliver.body?.status === "delivered", `status ${deliver.status}, ${deliver.body?.status ?? deliver.body?.error}`);
 

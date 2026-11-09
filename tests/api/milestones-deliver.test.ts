@@ -1,6 +1,9 @@
 // PAC-22 · POST /api/milestones/[id]/deliver. Sin red: la base es un doble en memoria.
+// A1 (auditoría de seguridad): la entrega se firma con la wallet de la freelancer; decir cuál es no alcanza.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it } from "vitest";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { buildDeliveryTypedData } from "@/lib/chain/delivery";
 import { deliverMilestone } from "@/lib/milestones";
 import { deliverMilestoneSchema } from "@/lib/validation/milestone";
 
@@ -56,24 +59,45 @@ class FakeQuery {
   }
 }
 
-const WALLET = "0x" + "a".repeat(40);
+const CHAIN_ID = 42220;
 const MILESTONE = "11111111-1111-1111-1111-111111111111";
-const input = deliverMilestoneSchema.parse({
-  freelancerWallet: "0x" + "A".repeat(40),
-  deliveryUrl: "https://example.com/entrega",
-  deliveryNote: "Listo el primer tramo",
-});
+const OTHER_MILESTONE = "22222222-2222-2222-2222-222222222222";
+const URL_OK = "https://example.com/entrega";
+// Cuentas de prueba con claves al azar: firman de verdad, así se prueba la verificación completa.
+const freelancer = privateKeyToAccount(generatePrivateKey());
+const stranger = privateKeyToAccount(generatePrivateKey());
+
+type Signer = typeof freelancer;
+async function sign(options: { who?: Signer; milestoneId?: string; deliveryUrl?: string; position?: number } = {}) {
+  return (options.who ?? freelancer).signTypedData(
+    buildDeliveryTypedData({
+      chainId: CHAIN_ID,
+      agreementPublicId: "AbCd1234",
+      milestoneId: options.milestoneId ?? MILESTONE,
+      position: options.position ?? 1,
+      deliveryUrl: options.deliveryUrl ?? URL_OK,
+    }),
+  );
+}
+
+let input: ReturnType<typeof deliverMilestoneSchema.parse>;
 
 let db: FakeDb;
 const milestone = () => db.tables.milestones[0];
 
-beforeEach(() => {
+beforeEach(async () => {
+  input = deliverMilestoneSchema.parse({
+    signature: await sign(),
+    deliveryUrl: URL_OK,
+    deliveryNote: "Listo el primer tramo",
+  });
   db = new FakeDb();
-  db.tables.users.push({ id: "u1", wallet: WALLET, phone: "+5491100000000" });
-  db.tables.agreements.push({ id: "a1", freelancer_id: "u1", client_contact: "cliente@mail.com" });
+  db.tables.users.push({ id: "u1", wallet: freelancer.address, phone: "+5491100000000" });
+  db.tables.agreements.push({ id: "a1", public_id: "AbCd1234", freelancer_id: "u1", client_contact: "cliente@mail.com" });
   db.tables.milestones.push({
     id: MILESTONE,
     agreement_id: "a1",
+    position: 1,
     status: "funded",
     amount: "500000000000000000000",
     delivery_url: null,
@@ -84,7 +108,7 @@ beforeEach(() => {
 
 describe("deliverMilestone", () => {
   it("pasa un hito funded a delivered y guarda link, nota y fecha", async () => {
-    const res = await deliverMilestone(db.asClient(), MILESTONE, input);
+    const res = await deliverMilestone(db.asClient(), MILESTONE, input, CHAIN_ID);
     expect(res.kind).toBe("delivered");
     expect(milestone()).toMatchObject({
       status: "delivered",
@@ -99,13 +123,14 @@ describe("deliverMilestone", () => {
   });
 
   it("es idempotente: si ya está delivered devuelve lo guardado sin pisarlo", async () => {
-    await deliverMilestone(db.asClient(), MILESTONE, input);
+    await deliverMilestone(db.asClient(), MILESTONE, input, CHAIN_ID);
     const before = { ...milestone() };
-    const again = await deliverMilestone(db.asClient(), MILESTONE, {
-      ...input,
-      deliveryUrl: "https://otro.com/x",
-      deliveryNote: "otra nota",
-    });
+    const again = await deliverMilestone(
+      db.asClient(),
+      MILESTONE,
+      { ...input, deliveryNote: "otra nota" },
+      CHAIN_ID,
+    );
     expect(again.kind).toBe("already_delivered");
     expect(milestone()).toEqual(before);
     if (again.kind === "already_delivered") {
@@ -117,44 +142,99 @@ describe("deliverMilestone", () => {
     "no entrega un hito en %s",
     async (status) => {
       milestone().status = status;
-      const res = await deliverMilestone(db.asClient(), MILESTONE, input);
+      const res = await deliverMilestone(db.asClient(), MILESTONE, input, CHAIN_ID);
       expect(res).toEqual({ kind: "wrong_status", status });
       expect(milestone().status).toBe(status);
       expect(milestone().delivery_url).toBeNull();
     },
   );
 
-  it("otra wallet no puede entregar (forbidden) y no cambia nada", async () => {
-    const res = await deliverMilestone(db.asClient(), MILESTONE, {
-      ...input,
-      freelancerWallet: "0x" + "b".repeat(40),
+  describe("la firma manda (A1)", () => {
+    const rejected = async (signature: string, deliveryUrl = URL_OK) => {
+      const res = await deliverMilestone(
+        db.asClient(),
+        MILESTONE,
+        { ...input, signature, deliveryUrl },
+        CHAIN_ID,
+      );
+      expect(res.kind).toBe("forbidden");
+      expect(milestone().status).toBe("funded");
+      expect(milestone().delivery_url).toBeNull();
+    };
+
+    it("una firma de otra wallet no entrega (forbidden) y no cambia nada", async () => {
+      await rejected(await sign({ who: stranger }));
     });
-    expect(res.kind).toBe("forbidden");
-    expect(milestone().status).toBe("funded");
+
+    it("conocer la wallet de la freelancer no alcanza: sin su firma no hay entrega", async () => {
+      await rejected("0x" + "ab".repeat(65));
+    });
+
+    it("una firma basura no rompe nada: forbidden", async () => {
+      await rejected("0x" + "00".repeat(65));
+    });
+
+    it("la firma está atada al link: no sirve para entregar otro link", async () => {
+      await rejected(await sign({ deliveryUrl: "https://example.com/entrega" }), "https://phishing.example/robo");
+    });
+
+    it("la firma está atada al hito: no sirve para otro hito del mismo acuerdo", async () => {
+      await rejected(await sign({ milestoneId: OTHER_MILESTONE }));
+    });
+
+    it("la firma está atada a la red: una firma de otra red no vale", async () => {
+      const other = await freelancer.signTypedData(
+        buildDeliveryTypedData({
+          chainId: 11142220,
+          agreementPublicId: "AbCd1234",
+          milestoneId: MILESTONE,
+          position: 1,
+          deliveryUrl: URL_OK,
+        }),
+      );
+      await rejected(other);
+    });
+
+    it("sin firma válida nadie se entera del estado del hito (forbidden antes que wrong_status)", async () => {
+      milestone().status = "paid";
+      const res = await deliverMilestone(
+        db.asClient(),
+        MILESTONE,
+        { ...input, signature: await sign({ who: stranger }) },
+        CHAIN_ID,
+      );
+      expect(res.kind).toBe("forbidden");
+    });
   });
 
   it("not_found si el hito no existe", async () => {
     const res = await deliverMilestone(
       db.asClient(),
-      "22222222-2222-2222-2222-222222222222",
+      OTHER_MILESTONE,
       input,
+      CHAIN_ID,
     );
     expect(res.kind).toBe("not_found");
   });
 
   it("si la base falla, tira un error (la ruta responde 500 sin detalles)", async () => {
     db.failTable = "milestones";
-    await expect(deliverMilestone(db.asClient(), MILESTONE, input)).rejects.toThrow();
+    await expect(deliverMilestone(db.asClient(), MILESTONE, input, CHAIN_ID)).rejects.toThrow();
   });
 });
 
 describe("deliverMilestoneSchema", () => {
-  const ok = { freelancerWallet: WALLET, deliveryUrl: "https://example.com/x" };
+  const SIGNATURE = "0x" + "ab".repeat(65);
+  const ok = { signature: SIGNATURE, deliveryUrl: "https://example.com/x" };
 
-  it("acepta sin nota y pasa la wallet a minúscula", () => {
-    const parsed = deliverMilestoneSchema.parse({ ...ok, freelancerWallet: "0x" + "A".repeat(40) });
-    expect(parsed.freelancerWallet).toBe(WALLET);
+  it("acepta sin nota", () => {
+    const parsed = deliverMilestoneSchema.parse(ok);
+    expect(parsed.signature).toBe(SIGNATURE);
     expect(parsed.deliveryNote).toBeUndefined();
+  });
+
+  it("ya no acepta la wallet escrita a mano en lugar de la firma", () => {
+    expect(deliverMilestoneSchema.safeParse({ freelancerWallet: "0x" + "a".repeat(40), deliveryUrl: "https://example.com/x" }).success).toBe(false);
   });
 
   it.each(["http://example.com", "javascript:alert(1)", "no es un link", ""])(
@@ -165,13 +245,9 @@ describe("deliverMilestoneSchema", () => {
     },
   );
 
-  it("pide link y wallet válida, y limita la nota", () => {
-    expect(deliverMilestoneSchema.safeParse({ freelancerWallet: WALLET }).success).toBe(false);
-    expect(deliverMilestoneSchema.safeParse({ ...ok, freelancerWallet: "0x123" }).success).toBe(
-      false,
-    );
-    expect(deliverMilestoneSchema.safeParse({ ...ok, deliveryNote: "x".repeat(1001) }).success).toBe(
-      false,
-    );
+  it("pide link y firma válida, y limita la nota", () => {
+    expect(deliverMilestoneSchema.safeParse({ signature: SIGNATURE }).success).toBe(false);
+    expect(deliverMilestoneSchema.safeParse({ ...ok, signature: "0x123" }).success).toBe(false);
+    expect(deliverMilestoneSchema.safeParse({ ...ok, deliveryNote: "x".repeat(1001) }).success).toBe(false);
   });
 });
