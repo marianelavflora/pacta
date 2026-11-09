@@ -178,6 +178,23 @@ export default function Home() {
         </p>
       </section>
 
+      {/* Video tutorial: lo primero después de la presentación */}
+      <section aria-label="Video tutorial" className="flex flex-col gap-3">
+        <h2 className="text-2xl font-bold tracking-tight">
+          Mirá cómo funciona en 50 segundos
+        </h2>
+        <video
+          className="aspect-video w-full rounded-3xl border bg-brand-ink"
+          controls
+          playsInline
+          preload="metadata"
+          aria-label="Tutorial de Pactá: de crear el acuerdo a cobrar en pesos"
+        >
+          <source src="/video/tutorial.mp4" type="video/mp4" />
+          Tu navegador no puede reproducir el video.
+        </video>
+      </section>
+
       {/* Ejemplo concreto */}
       <section
         aria-label="Ejemplo de un acuerdo"
