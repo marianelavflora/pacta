@@ -38,7 +38,7 @@ Con una sola base, los acuerdos de prueba (con tARS/tBRL de testnet) y los reale
 
 - **Pago por error en mainnet.** El liberador de producción paga todo hito en estado `approved` (y `expired`) que encuentre. Si hay un acuerdo de prueba aprobado en la base, intenta pagarlo **en mainnet, con plata real de la wallet del agente**, a la wallet que figure como freelancera de esa prueba. Los topes por pago limitan el daño, pero no lo evitan.
 - **Datos mezclados.** Los recibos, listados y la vista del cliente pueden mostrar acuerdos de otra red.
-- **Quién puede dispararlo.** Hoy el liberador solo corre si alguien con el `CRON_SECRET` lo llama (los crons no están agendados). Cuando se agende el cron, deja de ser manual y el riesgo pasa a ser automático.
+- **Quién puede dispararlo.** Desde el 2026-11-09 el cron diario de Vercel (`vercel.json`) y la propia ruta de aprobación corren el liberador solas. **Está mitigado por una guarda:** el liberador solo paga un acuerdo si su depósito existe en la red actual (se comprueba en la cadena), así que un acuerdo de prueba de testnet nunca se paga con plata de mainnet. Los topes por moneda siguen limitando el daño.
 
 ### Cómo reducirlo mientras tanto (obligatorio antes de cada prueba en mainnet)
 
@@ -48,7 +48,7 @@ Con una sola base, los acuerdos de prueba (con tARS/tBRL de testnet) y los reale
    ```
    (Si ya hay usuarios reales de mainnet, no vacíes `users`: borrá solo los de prueba.)
 2. **No corras pruebas locales que lleguen a `approved`** contra esa base. Si hace falta probar el flujo completo, hacelo en mainnet con montos mínimos, o vaciá las tablas otra vez después.
-3. **No agendes el cron** (`vercel.json`) hasta separar las bases.
+3. **El cron ya está agendado** (una vez por día, lo máximo que permite Hobby) y es seguro con la base compartida gracias a la guarda de red del liberador.
 4. **Mantené los tres topes por moneda bajos** (paso 3) mientras convivan.
 5. Antes de disparar `/api/cron/releaser` a mano, mirá en Supabase qué hitos están `approved` y confirmá que todos son los de la prueba que querés pagar.
 
@@ -58,7 +58,7 @@ Con una sola base, los acuerdos de prueba (con tARS/tBRL de testnet) y los reale
 2. SQL Editor: pegar y correr, en orden, cada archivo de `supabase/migrations/` (`0001_...`, `0002_...` y los que sigan). Verificar que estén `users`, `agreements`, `milestones`, `movements` y `quotes`, vacías.
 3. Anotar la **Project URL** (Project Settings → Data API) y la clave **secret** (`sb_secret_...`, en API Keys; nunca la publishable/anon).
 4. En Vercel, partir `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`: **solo Production** con los del proyecto nuevo, y **Preview y Development** con los del proyecto actual (el de pruebas). Redeployar Production.
-5. Recién ahí, agendar el cron.
+5. El cron ya está agendado; no hay nada más que hacer acá.
 
 ## 3. Variables en Vercel
 
@@ -130,7 +130,7 @@ Montos **mínimos**. Para la primera vez, un acuerdo en la **misma moneda** (wAR
 2. Con la wallet del **cliente**, abrí el link del acuerdo y **💸 depositá**.
 3. La **freelancera entrega** el hito.
 4. El **cliente aprueba** firmando.
-5. Disparar los barridos a mano (el plan Hobby de Vercel solo permite crons diarios):
+5. **Pago:** el cliente aprueba y la ruta de aprobación paga el hito apenas responde (no hace falta ningún cron). Si algo falló, el cron diario lo reintenta, o se dispara a mano:
    ```
    curl -H "Authorization: Bearer <CRON_SECRET>" https://pacta-dun.vercel.app/api/cron/vault
    curl -H "Authorization: Bearer <CRON_SECRET>" https://pacta-dun.vercel.app/api/cron/releaser
@@ -149,7 +149,7 @@ Si el cliente deposita en una moneda y la freelancera cobra en otra, el liberado
 1. **Correr la migración** `supabase/migrations/0003_movements_details.sql` en el SQL Editor de Supabase (`alter table movements add column if not exists details jsonb;`). Sin esa columna el cambio falla antes de mover plata.
 2. La wallet del agente necesita CELO (comisiones). La plata que se cambia es la del depósito del cliente.
 3. Montos mínimos: Textile pide al menos ~US$1 por tramo.
-4. Si un cambio queda a medias, el hito queda en `converting` y el log dice `NECESITA REVISION MANUAL`: puede haber USDT del agente en el medio. Mirá la wallet del agente en CeloScan antes de tocar nada. Nada se reintenta solo.
+4. Si un cambio queda a medias (el tramo 1 salió y el 2 no), el hito queda en `converting` y **el liberador retoma solo el tramo 2 en su próximo barrido** (nunca repite el tramo 1), con tope de 5 intentos; pasado el tope, o si no se puede retomar, el log dice `NECESITA REVISION MANUAL` y puede haber USDT del agente en el medio: mirá la wallet del agente en CeloScan y corré `npm run conversion:resume -- <milestoneId>` (ensayo; `--send` hace el tramo 2). Antes de empezar un cambio se comprueba que el USDT intermedio supere el mínimo de Textile (1,3 USDT); si no, el acuerdo queda esperando en vez de arriesgar un cambio a medias.
 
 ## 7. Si algo sale mal
 
@@ -159,8 +159,8 @@ Si el cliente deposita en una moneda y la freelancera cobra en otra, el liberado
 
 ## 8. Pendientes que no bloquean el paso a mainnet
 
-- **Separar Supabase en dos proyectos (después de la deadline)**, ver paso 2. Hasta entonces, no agendar el cron.
-- Agendar los crons en `vercel.json` (en Hobby solo hay crons diarios; para la demo se disparan a mano).
+- **Separar Supabase en dos proyectos (después de la deadline)**, ver paso 2.
+- Un cron más frecuente que una vez por día (Hobby no lo permite): hoy, pagar al aprobar y el cron diario cubren los plazos de 3 y 6 días.
 - Cargar `RESEND_API_KEY` y el bot de Telegram para los avisos.
 - Conversión on-chain entre monedas (PAC-32).
 - Buscar usuarios independientes: wallets que no creamos ni fondeamos y que ya usaban Celo (regla 7 de `AGENTS.md`).

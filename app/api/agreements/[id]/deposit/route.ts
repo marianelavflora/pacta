@@ -21,7 +21,10 @@ const MESSAGES: Record<string, [number, string]> = {
     422,
     "La transacción no salió de Pactá, así que no la podemos tomar.",
   ],
-  wrong_sender: [409, "Este acuerdo ya se está pagando desde otra billetera."],
+  wrong_sender: [
+    409,
+    "Este acuerdo ya se está pagando desde otra billetera. Para tomarlo, tu depósito tiene que cubrir por sí solo el primer hito.",
+  ],
   tx_used_elsewhere: [409, "Esa transacción ya está asignada a otro acuerdo."],
 };
 

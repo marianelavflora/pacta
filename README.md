@@ -25,9 +25,9 @@ A designer in Córdoba works for an agency in São Paulo. Today she gets paid in
 
 1. **The freelancer describes the job in plain words.** The agent (Gemini API) turns it into an agreement with milestones, amounts and review deadlines that she can edit.
 2. **The client deposits the full amount upfront**, in their own Ripio stablecoin (for example wBRL). The agent holds it as a guarantee, so the freelancer knows the money is there before she starts.
-3. **She delivers a milestone** with a link and a note. The client gets a Telegram message to review it.
+3. **She delivers a milestone** with a link and a note. The client is notified (Telegram first, email as a fallback) to review it.
 4. **The client approves** with a wallet signature (no gas).
-5. **The agent gets the best FX quote**, converts that tranche (wBRL → wARS) and pays her. She gets a receipt with the rate, the amounts and the onchain transactions.
+5. **The agent gets the best FX quote**, converts that tranche through Textile (wBRL → USDT → wARS) and pays her. She gets a receipt with the rate, the amounts and the onchain transactions.
 6. **If the client doesn't answer**, the agent sends a second reminder after 3 days, and after 3 more days (6 in total) it releases the payment on its own.
 
 Same-currency agreements (wARS → wARS) work too, for clients and freelancers in the same country.
@@ -37,18 +37,23 @@ sequenceDiagram
   actor F as Freelancer
   participant A as Pactá agent
   actor C as Client
-  F->>A: "Logo + brand manual, 3 deliveries, 1,500 BRL"
-  A->>A: Builds agreement with 3 milestones (Gemini API)
-  A->>C: Link to review and deposit
-  C->>A: Deposits 1,500 wBRL
-  A->>F: "Funds secured, you can start"
-  F->>A: Delivers milestone 1
-  A->>C: "Review delivery 1" (Telegram)
-  C->>A: Approves (wallet signature)
-  A->>A: Quotes wBRL→wARS, picks the best route
-  A->>F: Pays the tranche in wARS
+  participant T as Textile FX
+  F->>A: Chat: "Logo + brand manual, 3 deliveries, 1,500 BRL"
+  A->>F: Proposes 3 milestones (Gemini API), asks for what is missing
+  F->>C: Shares the agreement link
+  C->>A: Deposits 1,500 wBRL (tagged tx, can be in parts)
+  A->>F: "Funds secured, you can start" (Telegram, email as fallback)
+  F->>A: Delivers milestone 1 (link + note)
+  A->>C: "Review delivery 1" (Telegram, email as fallback)
+  C->>A: Approves (wallet signature, no gas)
+  A->>A: Quotes wBRL→wARS: Textile, Uniswap v3, reference rate
+  A->>A: Saves the conversion as pending, then reserves the milestone
+  A->>T: Leg 1: firm quote + swap wBRL→USDT (tagged txs)
+  A->>T: Leg 2: firm quote + swap USDT→wARS (min. 90% of the estimate)
+  A->>F: Pays the wARS received (tagged transfer)
   A->>F: Receipt with FX rate and onchain links
   Note over A,C: No answer in 3 days: second reminder. 3 more days: auto-release
+  Note over F,C: Same-currency agreements (wARS → wARS) skip the conversion
 ```
 
 ## How it works
@@ -58,29 +63,60 @@ flowchart LR
   F[Freelancer] --> W[Pactá web]
   C[Client] --> W
   W --> API[API]
+  API --> IA[Gemini API: intake chat]
   API --> DB[(Supabase)]
-  API --> IA[Gemini API]
-  AG[Agent: scheduled jobs] --> DB
-  AG --> FX[FX quoter]
-  FX --> TX[Textile / Celo DEX]
-  AG --> WAL[Agent wallet + attribution tag]
-  WAL --> CELO[(Celo)]
-  W -- tagged deposit --> CELO
-  AG --> N[Telegram / email alerts]
+  W -- tagged deposit --> CELO[(Celo)]
+  subgraph Agent["Pactá agent (scheduled jobs)"]
+    VAULT[Vault]
+    REM[Reminders]
+    REL[Releaser]
+  end
+  Agent --> DB
+  REL --> FX[FX quoter]
+  FX --> TXQ[Textile: price]
+  FX --> UNI[Uniswap v3 on Celo: price]
+  FX --> REF[Reference rate]
+  REL --> TXS[Textile: firm quotes + swaps]
+  REL --> WAL[Agent wallet + attribution tag]
+  WAL -- swaps and payout --> CELO
+  REM --> N[Alerts]
+  REL --> N
+  N --> TG[Telegram]
+  N --> EM[Email: Resend]
 ```
 
 | Module | What it does |
 |---|---|
-| Intake | Free text → agreement with milestones, amounts and deadlines (Gemini API). |
+| Intake | Chat with the agent: free text → agreement with milestones, amounts and deadlines (Gemini API). It asks for whatever is missing. |
 | Web | Create agreement, client link, deposit, deliver, approve, receipts. |
 | Vault | Detects deposits to the agent wallet and tracks the balance per agreement. |
-| FX quoter | Textile + a Celo DEX as fallback, plus a reference rate; picks the best price. |
-| Releaser | Pays approved or expired milestones, converting when needed, exactly once. |
+| FX quoter | Compares Textile, Uniswap v3 on Celo and a reference rate. Drops any route more than 15% away from the reference and picks the one that pays the freelancer the most. |
+| Releaser | Pays approved or expired milestones exactly once. When the currencies differ it first converts through Textile in two legs (currency → USDT → currency), saving each leg as it goes. |
 | Receipts | Matches database and chain to build a receipt for each payment. |
 | Identity & tag | Single wallet client with the attribution tag, ERC-8004 registration, agent card. |
-| Alerts | Telegram and email on every state change. |
+| Alerts | Telegram first, email (Resend) as a fallback, on every state change. |
 
-Milestone lifecycle: `pending → funded → delivered → reminded (day 3) → approved | expired (day 6) → converting → paid`, with `paused` available from `delivered`.
+Milestone lifecycle: `pending → funded → delivered → reminded (day 3) → approved | expired (day 6) → converting → paid`. `paused` exists as a status but nothing sets it yet.
+
+```mermaid
+stateDiagram-v2
+  [*] --> pending
+  pending --> funded: client deposits
+  funded --> delivered: freelancer delivers
+  delivered --> approved: client approves
+  delivered --> reminded: day 3, no answer
+  reminded --> approved: client approves
+  reminded --> expired: day 6, auto-release
+  approved --> converting: agent takes it
+  expired --> converting: agent takes it
+  converting --> approved: failed, no money moved (retry)
+  converting --> paid: agent pays
+  paid --> [*]
+  note right of converting
+    Cut off halfway: it is not retried alone,
+    a person reviews it
+  end note
+```
 
 For the MVP the agent wallet acts as the vault, with a cap per agreement and a daily payout cap. An onchain escrow contract is a stretch goal.
 
@@ -95,7 +131,7 @@ For the MVP the agent wallet acts as the vault, with a cap per agreement and a d
 | Attribution | `@celo/attribution-tags` (ERC-8021) on every transaction |
 | Identity | ERC-8004 Identity Registry on Celo |
 | Tokens | Ripio wFIAT: wARS, wBRL, wMXN |
-| FX | Textile + Celo DEX fallback |
+| FX | Textile (quotes and swaps), Uniswap v3 on Celo (quotes only) and a reference rate |
 | AI | Gemini API |
 | Database | Supabase (Postgres) |
 | Scheduled jobs | Vercel Cron |
@@ -129,7 +165,7 @@ For the MVP the agent wallet acts as the vault, with a cap per agreement and a d
 | Leg 2: swap USDT → wBRL (10.054 wBRL) | [`0xd77e…21e5`](https://celoscan.io/tx/0xd77ebdbadd079aa6e9a790879ac76788b4652ecd4ed6760c9cb0e22ef92d21e5) |
 | Payout to the freelancer (10.054 wBRL) | [`0xb717…6dba`](https://celoscan.io/tx/0xb717771dc5173d0e68a97c22d6440e70e3697eac9f88ce1232ce5b1b6dd6fba6) |
 
-The agent only signs swap calldata that points at Textile's official contracts and an exact approval, and a conversion that stops halfway is never retried automatically (it is flagged for a human, see `npm run conversion:resume`).
+The agent only signs swap calldata that points at Textile's official contracts and an exact approval, and a conversion that stops halfway is resumed automatically by the agent (only the missing leg, never the one already done, with an attempt limit; see `npm run conversion:resume` for the manual version).
 
 You can check the tag of any transaction with `NEXT_PUBLIC_CHAIN=celo npm run tag:verify -- <tx hash>` (read-only).
 

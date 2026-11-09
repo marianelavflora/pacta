@@ -228,3 +228,54 @@ describe("liberador: retomar un cambio ya confirmado", () => {
     expect(chain.transfer).not.toHaveBeenCalled();
   });
 });
+
+describe("liberador: retoma solo un cambio a medias (resumePending)", () => {
+  function pendingConversion() {
+    setup("converting");
+    db.tables.movements.push({ id: "mvC", agreement_id: "a1", milestone_id: "m1", kind: "conversion", status: "pending", amount_out: null, tx_hash: null });
+  }
+
+  it("si el conversor lo completa, el liberador paga lo que llegó sin cambiar de nuevo", async () => {
+    pendingConversion();
+    const resumePending = vi.fn(async () => {
+      Object.assign(db.tables.movements[0], { status: "confirmed", amount_out: (BigInt(480) * E18).toString() });
+      return { kind: "completed" as const, amountOut: BigInt(480) * E18 };
+    });
+    const result = await releaseMilestone(deps({ converter: { ...converter, resumePending } as unknown as Converter }), "m1");
+    expect(result).toMatchObject({ kind: "paid", amount: (BigInt(480) * E18).toString() });
+    expect(resumePending).toHaveBeenCalledTimes(1);
+    expect(converter.convert).not.toHaveBeenCalled();
+    expect(chain.transfer).toHaveBeenCalledTimes(1);
+  });
+
+  it("si el conversor pide esperar, no paga ni cambia nada", async () => {
+    pendingConversion();
+    const resumePending = vi.fn(async () => ({ kind: "wait" as const, reason: "sin recibo todavía" }));
+    const result = await releaseMilestone(deps({ converter: { ...converter, resumePending } as unknown as Converter }), "m1");
+    expect(result.kind).toBe("in_progress");
+    expect(chain.transfer).not.toHaveBeenCalled();
+  });
+
+  it("si no se puede retomar, queda a revisión manual con el motivo", async () => {
+    pendingConversion();
+    const resumePending = vi.fn(async () => ({ kind: "needs_review" as const, reason: "Ya se intentó 5 veces" }));
+    const result = await releaseMilestone(deps({ converter: { ...converter, resumePending } as unknown as Converter }), "m1");
+    expect(result).toEqual({ kind: "needs_review", reason: "Ya se intentó 5 veces" });
+    expect(milestone().status).toBe("converting");
+    expect(chain.transfer).not.toHaveBeenCalled();
+  });
+
+  it("un cambio que se cortó a la mitad en esta corrida se retoma en el próximo barrido", async () => {
+    setup();
+    converter.convert.mockRejectedValueOnce(Object.assign(new Error("tramo 2 falló"), { moneyMayHaveMoved: true }));
+    expect((await releaseMilestone(deps(), "m1")).kind).toBe("needs_review");
+
+    const resumePending = vi.fn(async () => {
+      Object.assign(db.tables.movements[0], { status: "confirmed", amount_out: (BigInt(480) * E18).toString() });
+      return { kind: "completed" as const, amountOut: BigInt(480) * E18 };
+    });
+    const retry = await releaseMilestone(deps({ converter: { ...converter, resumePending } as unknown as Converter }), "m1");
+    expect(retry.kind).toBe("paid");
+    expect(converter.convert).toHaveBeenCalledTimes(1);
+  });
+});

@@ -1,5 +1,7 @@
 // Entregar un hito (PAC-22). Recibe la base por parámetro para probarlo sin red.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { verifyTypedData, type Hex } from "viem";
+import { buildDeliveryTypedData } from "@/lib/chain/delivery";
 import { onMilestoneDelivered } from "@/lib/notify/events";
 import type { DeliverMilestoneInput } from "@/lib/validation/milestone";
 
@@ -21,7 +23,7 @@ export type DeliverResult =
   | { kind: "wrong_status"; status: string };
 
 // Columnas a mano (nunca "*"). El monto va ::text: PostgREST manda numeric como número JSON.
-const COLUMNS = "id, agreement_id, status, amount::text, delivery_url, delivery_note, delivered_at";
+const COLUMNS = "id, agreement_id, position, status, amount::text, delivery_url, delivery_note, delivered_at";
 
 type DbError = { message: string } | null;
 function fail(step: string, error: NonNullable<DbError>): never {
@@ -45,16 +47,17 @@ export async function deliverMilestone(
   db: SupabaseClient,
   milestoneId: string,
   input: DeliverMilestoneInput,
+  chainId: number,
 ): Promise<DeliverResult> {
   const found = await db.from("milestones").select(COLUMNS).eq("id", milestoneId).maybeSingle();
   if (found.error) fail("buscar el hito", found.error);
   if (!found.data) return { kind: "not_found" };
   const row = found.data as Record<string, unknown>;
 
-  // Solo la freelancer del acuerdo puede entregar (la firma de la wallet llega más adelante).
+  // Solo la freelancer del acuerdo puede entregar, y lo prueba con su firma (no con decir cuál es su wallet).
   const agreement = await db
     .from("agreements")
-    .select("freelancer_id")
+    .select("public_id, freelancer_id")
     .eq("id", row.agreement_id)
     .single();
   if (agreement.error) fail("buscar el acuerdo", agreement.error);
@@ -64,9 +67,26 @@ export async function deliverMilestone(
     .eq("id", agreement.data.freelancer_id)
     .single();
   if (freelancer.error) fail("buscar a la freelancer", freelancer.error);
-  if (String(freelancer.data.wallet).toLowerCase() !== input.freelancerWallet) {
-    return { kind: "forbidden" };
+
+  // Primero la firma: así nadie que no sea la freelancer se entera del estado del hito.
+  const typed = buildDeliveryTypedData({
+    chainId,
+    agreementPublicId: agreement.data.public_id as string,
+    milestoneId: row.id as string,
+    position: Number(row.position),
+    deliveryUrl: input.deliveryUrl,
+  });
+  let valid = false;
+  try {
+    valid = await verifyTypedData({
+      address: freelancer.data.wallet as Hex,
+      signature: input.signature as Hex,
+      ...typed,
+    });
+  } catch {
+    valid = false;
   }
+  if (!valid) return { kind: "forbidden" };
 
   if (row.status === "delivered") return { kind: "already_delivered", milestone: toPublic(row) };
   if (row.status !== "funded") return { kind: "wrong_status", status: row.status as string };
