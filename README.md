@@ -165,7 +165,7 @@ For the MVP the agent wallet acts as the vault, with a cap per agreement and a d
 | Leg 2: swap USDT → wBRL (10.054 wBRL) | [`0xd77e…21e5`](https://celoscan.io/tx/0xd77ebdbadd079aa6e9a790879ac76788b4652ecd4ed6760c9cb0e22ef92d21e5) |
 | Payout to the freelancer (10.054 wBRL) | [`0xb717…6dba`](https://celoscan.io/tx/0xb717771dc5173d0e68a97c22d6440e70e3697eac9f88ce1232ce5b1b6dd6fba6) |
 
-The agent only signs swap calldata that points at Textile's official contracts and an exact approval, and a conversion that stops halfway is never retried automatically (it is flagged for a human, see `npm run conversion:resume`).
+The agent only signs swap calldata that points at Textile's official contracts and an exact approval, and a conversion that stops halfway is resumed automatically by the agent (only the missing leg, never the one already done, with an attempt limit; see `npm run conversion:resume` for the manual version).
 
 You can check the tag of any transaction with `NEXT_PUBLIC_CHAIN=celo npm run tag:verify -- <tx hash>` (read-only).
 

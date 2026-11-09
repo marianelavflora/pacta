@@ -149,7 +149,7 @@ Si el cliente deposita en una moneda y la freelancera cobra en otra, el liberado
 1. **Correr la migración** `supabase/migrations/0003_movements_details.sql` en el SQL Editor de Supabase (`alter table movements add column if not exists details jsonb;`). Sin esa columna el cambio falla antes de mover plata.
 2. La wallet del agente necesita CELO (comisiones). La plata que se cambia es la del depósito del cliente.
 3. Montos mínimos: Textile pide al menos ~US$1 por tramo.
-4. Si un cambio queda a medias, el hito queda en `converting` y el log dice `NECESITA REVISION MANUAL`: puede haber USDT del agente en el medio. Mirá la wallet del agente en CeloScan antes de tocar nada. Nada se reintenta solo.
+4. Si un cambio queda a medias (el tramo 1 salió y el 2 no), el hito queda en `converting` y **el liberador retoma solo el tramo 2 en su próximo barrido** (nunca repite el tramo 1), con tope de 5 intentos; pasado el tope, o si no se puede retomar, el log dice `NECESITA REVISION MANUAL` y puede haber USDT del agente en el medio: mirá la wallet del agente en CeloScan y corré `npm run conversion:resume -- <milestoneId>` (ensayo; `--send` hace el tramo 2). Antes de empezar un cambio se comprueba que el USDT intermedio supere el mínimo de Textile (1,3 USDT); si no, el acuerdo queda esperando en vez de arriesgar un cambio a medias.
 
 ## 7. Si algo sale mal
 

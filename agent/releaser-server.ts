@@ -8,11 +8,12 @@ import { getDexConfig } from "@/lib/chain/dex";
 import { convertUnits } from "@/lib/fx/math";
 import { getBestQuote } from "@/lib/fx/quote";
 import { referenceSource } from "@/lib/fx/sources";
-import { createTextileSource } from "@/lib/fx/textile";
+import { createTextileSource, MIN_LEG_USDT, previewTextileRoute } from "@/lib/fx/textile";
 import { convertViaTextile, type TextileSwapDeps } from "@/lib/fx/textile-swap";
+import { recoverConversion, type ResumeDeps } from "./resume-conversion";
 
 import { getDb } from "@/lib/db";
-import { erc20Abi, getToken } from "@/lib/chain/tokens";
+import { erc20Abi, getToken, type TokenSymbol } from "@/lib/chain/tokens";
 import { getChain } from "@/lib/chain/chains";
 import { assertPayoutCapForMainnet } from "@/lib/chain/mainnet-guard";
 import { parseMaxPayoutsByCurrency } from "@/lib/chain/payout-caps";
@@ -66,16 +67,52 @@ export function getTextileSwapDeps(): TextileSwapDeps | undefined {
  * y un acuerdo con monedas distintas queda en `needs_conversion`. Toda transacción sale por el cliente
  * único del agente (con el tag del equipo).
  */
+/** Lo que necesita retomar un cambio a medias (también lo usa `npm run conversion:resume`). */
+export function getResumeDeps(): ResumeDeps | undefined {
+  const dex = getDexConfig();
+  const swap = getTextileSwapDeps();
+  if (!dex || !swap) return undefined;
+  const pub = getPublicClient();
+  return {
+    db: getDb(),
+    swap,
+    usdt: dex.usdt.address,
+    tokenAddress: (currency) => getToken(currency).address,
+    estimate: async (from, to, amountIn) => estimateConversion(from, to, amountIn),
+    getReceipt: async (hash) => {
+      try {
+        const r = await pub.getTransactionReceipt({ hash });
+        return { status: r.status, blockNumber: r.blockNumber };
+      } catch {
+        return null;
+      }
+    },
+  };
+}
+
+/** Cuánto se espera recibir de un cambio con Textile, o null si hoy no conviene o no se puede. */
+async function estimateConversion(from: TokenSymbol, to: TokenSymbol, amountIn: bigint): Promise<bigint | null> {
+  // Solo se cambia si Textile es de verdad la mejor ruta y su precio es razonable frente a la referencia.
+  const quote = await getBestQuote(from, to, [createTextileSource(), referenceSource], amountIn);
+  if (quote.route !== "textile") return null;
+  // Chequeo previo del mínimo: si el USDT intermedio queda bajo el piso de Textile, el tramo 2 no se
+  // podría hacer y habría que dejar USDT a medias. Mejor no empezar.
+  const route = await previewTextileRoute(from, to, amountIn);
+  if (route.usdtOut < MIN_LEG_USDT) return null;
+  return convertUnits(amountIn, quote.rate);
+}
+
 function buildConverter(): Converter | undefined {
   const dex = getDexConfig();
   const swapDeps = getTextileSwapDeps();
   if (!dex || !swapDeps) return undefined;
 
   return {
-    estimate: async (from, to, amountIn) => {
-      // Solo se cambia si Textile es de verdad la mejor ruta y su precio es razonable frente a la referencia.
-      const quote = await getBestQuote(from, to, [createTextileSource(), referenceSource], amountIn);
-      return quote.route === "textile" ? convertUnits(amountIn, quote.rate) : null;
+    estimate: estimateConversion,
+    resumePending: async (milestoneId) => {
+      const deps = getResumeDeps();
+      if (!deps) return { kind: "needs_review", reason: "Esta red no tiene Textile." };
+      return recoverConversion(deps, milestoneId);
     },
     convert: async ({ from, to, amountIn, minAmountOut }, onProgress) => {
       const result = await convertViaTextile(

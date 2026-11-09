@@ -6,7 +6,7 @@ import { getToken } from "@/lib/chain/tokens";
 import { parseRate, rateFromAmounts, RATE_SCALE } from "@/lib/fx/math";
 import { getBestQuote } from "@/lib/fx/quote";
 import { probeAmount, type RateSource, type RouteName } from "@/lib/fx/sources";
-import { createTextileSource } from "@/lib/fx/textile";
+import { createTextileSource, MIN_LEG_USDT, previewTextileRoute } from "@/lib/fx/textile";
 import { createUniswapSource } from "@/lib/fx/uniswap";
 
 const E18 = BigInt(10) ** BigInt(18);
@@ -72,6 +72,34 @@ describe("fuente Uniswap", () => {
   it("una moneda sin pool (wMXN) no tiene ruta", async () => {
     const source = createUniswapSource({ chain: "celo", quoter: async () => E18 });
     await expect(source.getRate("wMXN", "wARS")).rejects.toThrow(/wMXN/);
+  });
+});
+
+describe("chequeo previo del mínimo por tramo", () => {
+  it("el mínimo de USDT por tramo es 1,3 (piso de Textile ~US$ 1 más un margen del 30 %)", () => {
+    expect(MIN_LEG_USDT).toBe(BigInt(1_300_000));
+  });
+
+  it("la ruta devuelve el USDT intermedio y el monto final, para poder frenar un cambio muy chico", async () => {
+    // wBRL -> USDT: 100 wBRL dan 18 USDT; USDT -> wARS: esos 18 USDT dan 29.700 wARS.
+    const fetcher = (async (_url: unknown, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      const gives = body.sellToken.toLowerCase() === getToken("wBRL", "celo").address.toLowerCase() ? (BigInt(18) * E6).toString() : (BigInt(29_700) * E18).toString();
+      return new Response(JSON.stringify({ data: { status: "preview", buyAmount: gives } }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const route = await previewTextileRoute("wBRL", "wARS", BigInt(100) * E18, { chain: "celo", fetcher });
+
+    expect(route.usdtOut).toBe(BigInt(18) * E6);
+    expect(route.amountOut).toBe(BigInt(29_700) * E18);
+    expect(route.usdtOut >= MIN_LEG_USDT).toBe(true);
+  });
+
+  it("un monto chico da un USDT intermedio por debajo del mínimo (y el liberador no arranca)", async () => {
+    const fetcher = (async () =>
+      new Response(JSON.stringify({ data: { status: "preview", buyAmount: (BigInt(900_000)).toString() } }), { status: 200 })) as unknown as typeof fetch;
+    const route = await previewTextileRoute("wARS", "wBRL", BigInt(1_000) * E18, { chain: "celo", fetcher });
+    expect(route.usdtOut < MIN_LEG_USDT).toBe(true);
   });
 });
 

@@ -6,7 +6,7 @@ import { type Address } from "viem";
 
 import { CHAINS, getChainName, type ChainName } from "@/lib/chain/chains";
 import { getDexConfig } from "@/lib/chain/dex";
-import { getToken } from "@/lib/chain/tokens";
+import { getToken, type TokenSymbol } from "@/lib/chain/tokens";
 import { rateFromAmounts } from "./math";
 import { probeAmount, type RateSource } from "./sources";
 
@@ -50,22 +50,48 @@ export type TextileSourceOptions = {
   baseUrl?: string;
 };
 
+/**
+ * Mínimo de USDT que tiene que valer cada tramo para que el cambio valga la pena. Textile no cotiza por
+ * debajo de ~US$ 1 por tramo; se pide un margen (30 %) porque el precio se mueve entre la estimación y la
+ * cotización en firme. Un cambio cuyo USDT intermedio queda por debajo no se empieza: así no se corre el riesgo
+ * de hacer el tramo 1 y que el tramo 2 no se pueda hacer.
+ */
+export const MIN_LEG_USDT = BigInt(1_300_000); // 1,3 USDT (6 decimales)
+
+export type TextileRoutePreview = {
+  /** El USDT intermedio que da el tramo 1. */
+  usdtOut: bigint;
+  /** Lo que da el tramo 2: el monto final en la moneda de destino. */
+  amountOut: bigint;
+};
+
+/** Precio indicativo de `moneda → USDT → moneda` por `amountIn`, tramo por tramo. No reserva nada. */
+export async function previewTextileRoute(
+  from: TokenSymbol,
+  to: TokenSymbol,
+  amountIn: bigint,
+  options: TextileSourceOptions = {},
+): Promise<TextileRoutePreview> {
+  const chain = options.chain ?? getChainName();
+  const dex = getDexConfig(chain);
+  if (!dex) throw new Error(`textile: no está disponible en ${chain}`);
+
+  const fetcher = options.fetcher ?? fetch;
+  const baseUrl = options.baseUrl ?? process.env.TEXTILE_API_URL ?? DEFAULT_BASE_URL;
+  const chainId = CHAINS[chain].id;
+  const usdt = dex.usdt.address;
+
+  // Tramo 1: la moneda de origen a USDT. Tramo 2: ese USDT a la moneda de destino.
+  const usdtOut = await previewLeg(fetcher, baseUrl, chainId, getToken(from, chain).address, usdt, amountIn);
+  const amountOut = await previewLeg(fetcher, baseUrl, chainId, usdt, getToken(to, chain).address, usdtOut);
+  return { usdtOut, amountOut };
+}
+
 export function createTextileSource(options: TextileSourceOptions = {}): RateSource {
   return {
     name: "textile",
     async getRate(from, to, amountIn = probeAmount(from)) {
-      const chain = options.chain ?? getChainName();
-      const dex = getDexConfig(chain);
-      if (!dex) throw new Error(`textile: no está disponible en ${chain}`);
-
-      const fetcher = options.fetcher ?? fetch;
-      const baseUrl = options.baseUrl ?? process.env.TEXTILE_API_URL ?? DEFAULT_BASE_URL;
-      const chainId = CHAINS[chain].id;
-      const usdt = dex.usdt.address;
-
-      // Tramo 1: la moneda de origen a USDT. Tramo 2: ese USDT a la moneda de destino.
-      const usdtOut = await previewLeg(fetcher, baseUrl, chainId, getToken(from, chain).address, usdt, amountIn);
-      const amountOut = await previewLeg(fetcher, baseUrl, chainId, usdt, getToken(to, chain).address, usdtOut);
+      const { amountOut } = await previewTextileRoute(from, to, amountIn, options);
       return rateFromAmounts(amountIn, amountOut);
     },
   };
