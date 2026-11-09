@@ -37,11 +37,12 @@ export class TextileSwapError extends Error {
 }
 
 export type SwapChain = {
-  balanceOf(token: Address): Promise<bigint>;
+  /** Saldo del agente. Con `blockNumber`, el saldo en ESE bloque: no depende de qué tan al día esté el RPC. */
+  balanceOf(token: Address, blockNumber?: bigint): Promise<bigint>;
   allowance(token: Address, spender: Address): Promise<bigint>;
   /** Manda una transacción desde la wallet del agente (por el cliente con tag). Valor siempre 0. */
   send(tx: { to: Address; data: Hex }): Promise<Hash>;
-  waitForReceipt(hash: Hash): Promise<{ status: "success" | "reverted" }>;
+  waitForReceipt(hash: Hash): Promise<{ status: "success" | "reverted"; blockNumber?: bigint }>;
   signTypedData(typed: TakerControlTypedData): Promise<Hex>;
 };
 
@@ -232,6 +233,31 @@ function decodeApprove(data: Hex): { spender: Address; amount: bigint } | null {
 
 // ---------- Un tramo ----------
 
+const BLOCK_READ_ATTEMPTS = 5;
+const BLOCK_READ_WAIT_MS = 1_500;
+
+/**
+ * Cuánto recibió el agente de `token` en la transacción minada en `blockNumber`: el saldo en ese bloque
+ * menos el del bloque anterior. Se lee por número de bloque (y no "lo último") porque un RPC público puede
+ * contestar con un estado un instante atrasado: una lectura "al día" justo después del recibo puede no ver
+ * todavía el swap y dar 0 aunque haya llegado todo.
+ */
+export async function receivedInBlock(deps: TextileSwapDeps, token: Address, blockNumber: bigint): Promise<bigint> {
+  const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= BLOCK_READ_ATTEMPTS; attempt++) {
+    try {
+      const before = await deps.chain.balanceOf(token, blockNumber - BigInt(1));
+      const after = await deps.chain.balanceOf(token, blockNumber);
+      return after - before;
+    } catch (error) {
+      lastError = error; // el nodo todavía no tiene ese bloque: se espera un poco
+      if (attempt < BLOCK_READ_ATTEMPTS) await sleep(BLOCK_READ_WAIT_MS);
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("no se pudo leer el saldo del bloque");
+}
+
 export type LegResult = { record: LegRecord; received: bigint };
 
 /**
@@ -288,7 +314,10 @@ export async function executeLeg(
         throw new TextileSwapError("el swap se revirtió", false);
       }
 
-      const received = (await deps.chain.balanceOf(leg.buyToken)) - before;
+      const received =
+        receipt.blockNumber !== undefined
+          ? await receivedInBlock(deps, leg.buyToken, receipt.blockNumber)
+          : (await deps.chain.balanceOf(leg.buyToken)) - before;
       record.receivedAmount = received.toString();
       if (received < firm.buyAmount) {
         throw new TextileSwapError(
@@ -365,19 +394,34 @@ export async function convertViaTextile(
   );
   await report(0, first.record);
 
-  // Tramo 2: se vende exactamente el USDT que llegó. Si falla acá la plata ya está en USDT en la
-  // wallet del agente: se reintenta unas veces y, si no, se avisa que hay que revisar a mano.
+  const second = await runSecondLeg(
+    deps,
+    { usdt: request.usdt, toToken: request.toToken, usdtAmount: first.received, minAmountOut: request.minAmountOut },
+    (record) => report(1, record),
+  );
+  await report(1, second.record);
+  return { legs: [...legs], amountOut: second.received, finalTxHash: second.record.swapHash as Hash };
+}
+
+/**
+ * Tramo 2: se vende exactamente el USDT que llegó del tramo 1. Si falla acá la plata ya está en USDT en la
+ * wallet del agente: se reintenta unas veces y, si no, se avisa que hay que revisar a mano. También lo usa
+ * la recuperación de un cambio que quedó a medias (agent/resume-conversion.ts).
+ */
+export async function runSecondLeg(
+  deps: TextileSwapDeps,
+  request: { usdt: Address; toToken: Address; usdtAmount: bigint; minAmountOut: bigint },
+  onRecord: (record: LegRecord) => Promise<void>,
+): Promise<LegResult> {
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   let lastError: unknown;
   for (let attempt = 1; attempt <= LEG_TWO_ATTEMPTS; attempt++) {
     try {
-      const second = await executeLeg(
+      return await executeLeg(
         deps,
-        { sellToken: request.usdt, buyToken: request.toToken, sellAmount: first.received, minBuyAmount: request.minAmountOut },
-        (record) => report(1, record),
+        { sellToken: request.usdt, buyToken: request.toToken, sellAmount: request.usdtAmount, minBuyAmount: request.minAmountOut },
+        onRecord,
       );
-      await report(1, second.record);
-      return { legs: [...legs], amountOut: second.received, finalTxHash: second.record.swapHash as Hash };
     } catch (error) {
       lastError = error;
       // Si la segunda cotización fue válida pero el swap quedó en duda, no se vuelve a intentar.
