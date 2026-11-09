@@ -10,12 +10,12 @@
 </p>
 
 <p align="center">
-  Built on Celo · Ripio wFIAT (wARS, wBRL, wMXN) · Textile FX · ERC-8004 · Claude API
+  Built on Celo · Ripio wFIAT (wARS, wBRL, wMXN) · Textile FX · ERC-8004 · Gemini API
 </p>
 
 ---
 
-> **Status:** built for the [Agents on Open Rails](docs/hackathon/overview.md) hackathon (Loops House × Celo × Ripio). **Live on Celo mainnet** at [pacta-dun.vercel.app](https://pacta-dun.vercel.app): a full milestone payment (deposit → delivery → approval → payout in wARS) has run on mainnet with the team attribution tag, and the agent has an ERC-8004 identity. Cross-currency conversion (Textile / Uniswap) already **quotes** live prices; settling the swap onchain is still in progress, so today the agent pays out in the currency the client deposited. Sections marked *pending* are not done yet.
+> **Status:** built for the [Agents on Open Rails](docs/hackathon/overview.md) hackathon (Loops House × Celo × Ripio). **Live on Celo mainnet** at [pacta-dun.vercel.app](https://pacta-dun.vercel.app): full milestone payments have run on mainnet with the team attribution tag — including a **cross-currency one**: the client deposited wARS and the freelancer was paid in wBRL, converted onchain by the agent through Textile (wARS → USDT → wBRL, no dollar account involved for the users). The agent also has an ERC-8004 identity. Sections marked *pending* are not done yet.
 
 ## The problem
 
@@ -23,7 +23,7 @@ A designer in Córdoba works for an agency in São Paulo. Today she gets paid in
 
 ## What Pactá does
 
-1. **The freelancer describes the job in plain words.** The agent (Claude API) turns it into an agreement with milestones, amounts and review deadlines that she can edit.
+1. **The freelancer describes the job in plain words.** The agent (Gemini API) turns it into an agreement with milestones, amounts and review deadlines that she can edit.
 2. **The client deposits the full amount upfront**, in their own Ripio stablecoin (for example wBRL). The agent holds it as a guarantee, so the freelancer knows the money is there before she starts.
 3. **She delivers a milestone** with a link and a note. The client gets a Telegram message to review it.
 4. **The client approves** with a wallet signature (no gas).
@@ -38,7 +38,7 @@ sequenceDiagram
   participant A as Pactá agent
   actor C as Client
   F->>A: "Logo + brand manual, 3 deliveries, 1,500 BRL"
-  A->>A: Builds agreement with 3 milestones (Claude API)
+  A->>A: Builds agreement with 3 milestones (Gemini API)
   A->>C: Link to review and deposit
   C->>A: Deposits 1,500 wBRL
   A->>F: "Funds secured, you can start"
@@ -59,7 +59,7 @@ flowchart LR
   C[Client] --> W
   W --> API[API]
   API --> DB[(Supabase)]
-  API --> IA[Claude API]
+  API --> IA[Gemini API]
   AG[Agent: scheduled jobs] --> DB
   AG --> FX[FX quoter]
   FX --> TX[Textile / Celo DEX]
@@ -71,7 +71,7 @@ flowchart LR
 
 | Module | What it does |
 |---|---|
-| Intake | Free text → agreement with milestones, amounts and deadlines (Claude API). |
+| Intake | Free text → agreement with milestones, amounts and deadlines (Gemini API). |
 | Web | Create agreement, client link, deposit, deliver, approve, receipts. |
 | Vault | Detects deposits to the agent wallet and tracks the balance per agreement. |
 | FX quoter | Textile + a Celo DEX as fallback, plus a reference rate; picks the best price. |
@@ -96,7 +96,7 @@ For the MVP the agent wallet acts as the vault, with a cap per agreement and a d
 | Identity | ERC-8004 Identity Registry on Celo |
 | Tokens | Ripio wFIAT: wARS, wBRL, wMXN |
 | FX | Textile + Celo DEX fallback |
-| AI | Claude API |
+| AI | Gemini API |
 | Database | Supabase (Postgres) |
 | Scheduled jobs | Vercel Cron |
 | Alerts | Telegram (official Bot API) + email with Resend |
@@ -117,6 +117,19 @@ For the MVP the agent wallet acts as the vault, with a cap per agreement and a d
 | Attribution tag | `celo_dc3ce5f39b37` (team tag, on every transaction the agent and the web send) |
 | First real payment on mainnet: deposit (client → agent) | [`0x32a7…f6e0`](https://celoscan.io/tx/0x32a7ef0333f49a5b962cf7d269cafcf1b7f94200717210c26eab4ad8c4d5f6e0) |
 | First real payment on mainnet: payout (agent → freelancer) | [`0xbd3c…5ec8`](https://celoscan.io/tx/0xbd3c9924040692c25c9e6c065d473808873cfcc5d916726bb829d7cad9225ec8) |
+
+**First real cross-currency payment on mainnet** (3,000 wARS from the client → 10.05 wBRL to the freelancer, converted by the agent with Textile in two legs, wARS → USDT → wBRL; every transaction carries the team tag):
+
+| Step | Transaction |
+|---|---|
+| Client deposit (3,000 wARS) | [`0xd05b…b922`](https://celoscan.io/tx/0xd05b84d72c9fcc589b44acc74cf24d6a258dc805f591a61c7a284c80e98eb922) |
+| Leg 1: approval | [`0xa7b7…9aab`](https://celoscan.io/tx/0xa7b71d6bf2f45fa274beb828dcca337df589d27f71dd09440816c71328b09aab) |
+| Leg 1: swap wARS → USDT (1.8073 USDT) | [`0x16b0…0168`](https://celoscan.io/tx/0x16b0f5fcefcee793ab918f945ceaff4450b2dfe47516995d6fabc658541c0168) |
+| Leg 2: approval | [`0x8037…0634`](https://celoscan.io/tx/0x803747fce21451cd64b822a0702f949d51040c7cd64869f17f694927fc4b0634) |
+| Leg 2: swap USDT → wBRL (10.054 wBRL) | [`0xd77e…21e5`](https://celoscan.io/tx/0xd77ebdbadd079aa6e9a790879ac76788b4652ecd4ed6760c9cb0e22ef92d21e5) |
+| Payout to the freelancer (10.054 wBRL) | [`0xb717…6dba`](https://celoscan.io/tx/0xb717771dc5173d0e68a97c22d6440e70e3697eac9f88ce1232ce5b1b6dd6fba6) |
+
+The agent only signs swap calldata that points at Textile's official contracts and an exact approval, and a conversion that stops halfway is never retried automatically (it is flagged for a human, see `npm run conversion:resume`).
 
 You can check the tag of any transaction with `NEXT_PUBLIC_CHAIN=celo npm run tag:verify -- <tx hash>` (read-only).
 
@@ -152,7 +165,7 @@ Fill in `.env.local`. Git ignores it, so your keys never reach the repo. Every v
 | `SUPABASE_URL` | Supabase → Project Settings → Data API → Project URL. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API Keys → the **secret** key (`sb_secret_...`) or the legacy `service_role`. Never the publishable/anon key. |
 | `SUPABASE_DB_URL` | Supabase → **Connect** → Connection string. Only needed to run migrations from scripts. |
-| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) → API Keys. |
+| `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com) → Get API key (free tier). Server only. |
 | `TELEGRAM_BOT_TOKEN` | The bot token from [@BotFather](https://t.me/BotFather). See [`docs/telegram.md`](docs/telegram.md). |
 | `RESEND_API_KEY` | [resend.com](https://resend.com) → API Keys. |
 | `CRON_SECRET` | Any long random string, for example `openssl rand -hex 32`. |
