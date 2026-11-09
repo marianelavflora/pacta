@@ -206,12 +206,32 @@ There is no direct wARS/wBRL corridor, so the agent converts in two legs through
 - **Wallet:** there is no login; the wallet is the identity. A person without one installs MiniPay (Opera Mini), Valora or MetaMask and the app opens the connect sheet; signatures (approve, deliver) cost no gas. The client only needs the stablecoin and a little CELO for the deposit. Wallet-less onboarding (email login) is planned, not built.
 - **Real users:** we are onboarding independent freelancers and clients (wallets we did not create or fund) during the last week; counts and links will be added here once they are verified onchain, not before.
 
-### After the hackathon
+### Growth path after the hackathon
 
-1. Move production to its own Supabase project and an escrow contract instead of the agent-wallet vault (see [`docs/mainnet.md`](docs/mainnet.md)).
-2. Add an email login so people without a wallet can start, and keep alerts on the Telegram bot we already run.
-3. Onboard Argentine freelancer communities first, then Brazilian and Mexican agencies as clients, and add wMXN corridors.
-4. Revenue idea: a small fee per released milestone, shown on the receipt next to the FX rate (not charged today).
+None of this is built yet; it is the order we plan to do it in.
+
+**1. Solid base (first weeks)**
+- Move production to its own Supabase project and replace the agent-wallet vault with an onchain escrow contract ([`docs/mainnet.md`](docs/mainnet.md)).
+- Raise the payout caps step by step as the agent proves itself, and move the cron from daily to every few minutes.
+
+**2. More wallets and an easier workflow**
+- Support more wallets in the browser beyond MiniPay, Valora and MetaMask (for example WalletConnect-compatible wallets and Coinbase Wallet), so a client can pay from the wallet they already have.
+- Email login with an embedded wallet, so a freelancer or a client with no crypto can start in under a minute. Today the wallet is the identity.
+- Fewer steps: reusable agreement templates ("logo + brand manual"), a client link that needs no account to review and approve, and a repeat-client shortcut to open the next agreement in one tap.
+- Keep alerts on the Telegram bot we already run, plus a WhatsApp option for users who do not use Telegram.
+
+**3. Professional rebrand**
+- A proper brand pass on top of the current logo ([`docs/brand/`](docs/brand/)): name and tagline tested with freelancers, a design system, and a landing page focused on one promise ("cobrá por hitos, sin pasar por el dólar").
+- Receipts that look like documents a freelancer can show an accountant or a client's finance team, with the rate, the amounts and the onchain proof.
+- A short public explainer in Spanish and Portuguese (the clients are in Brazil), and a status page for the agent.
+
+**4. Marketing to win more clients**
+- **Start where the pain is:** Argentine freelancer communities (design, development and writing groups on Telegram, Discord and LinkedIn) who already bill clients in Brazil or Mexico. Free first agreement in exchange for feedback and a public testimonial.
+- **Give them a reason to bring the client:** every agreement link is a mini ad. The client sees the receipt, the rate and the guarantee, and may open their own agreement as the next freelancer's client.
+- **Content that proves it:** publish real receipts (with permission) comparing what the freelancer got through Pactá against the BRL → USD → ARS route, and short videos of a full payment.
+- **Partnerships:** Ripio and Celo communities, MiniPay's user base, and freelancer platforms and agencies in Brazil that pay LatAm talent.
+- **Measure it:** agreements created, share of milestones paid, time from approval to payment, and returning clients, reviewed every week.
+- **Revenue:** a small fee per released milestone, shown on the receipt next to the FX rate (not charged today).
 
 ## Run it locally
 
