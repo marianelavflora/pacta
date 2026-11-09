@@ -31,7 +31,7 @@ Si una persona del equipo te pide ayuda con un ticket, explicá lo que hacés en
 2. **Solo cuenta mainnet (chain 42220).** Desarrollamos en testnet (Celo Sepolia) hasta el **miércoles 4 nov**, cuando pasamos a mainnet. La red se cambia con **una sola variable de entorno**; nunca hardcodees la red ni direcciones de una red en particular.
 3. **Una sola wallet de agente** para todo el evento: la que se carga en el submit de Loops. El puntaje queda atado a esa dirección. Es la bóveda y la que paga, y sirve igual en testnet y en mainnet (la misma dirección anda en las dos redes). No crees otras wallets de agente.
 4. **Identidad ERC-8004** registrada desde esa misma wallet antes de la entrega (PAC-45). La wallet que registra es la dueña del `agentId`.
-5. **Equipo y tag.** Antes de la primera transacción en mainnet hay que confirmar el equipo en Loops y usar **el tag del equipo**, no el personal de Mavi.
+5. **Equipo y tag.** El tag que usamos (`celo_dc3ce5f39b37`) **es el tag del equipo**, ya confirmado por Mavi. No es un tag personal y no hay que reemplazarlo.
 6. **Repo público** y todo el código escrito durante la hackathon.
 7. **Usuarios independientes**: wallets que no creamos ni fondeamos nosotras y que ya usaban Celo antes. No inventes actividad ni fondees wallets para inflar números.
 
@@ -61,7 +61,7 @@ Si una persona del equipo te pide ayuda con un ticket, explicá lo que hacés en
 | Tareas programadas | Vercel Cron |
 | Avisos | Telegram con la Bot API oficial (ver `docs/telegram.md`) + mail con Resend de respaldo |
 
-Tag de atribución actual: **`celo_dc3ce5f39b37`** (el personal de Mavi). Va en la variable `NEXT_PUBLIC_ATTRIBUTION_TAG`, nunca escrito en el código. Si antes de mainnet nos anotamos como equipo en Loops, se reemplaza por el tag del equipo (regla 5) y se cambia solo esa variable.
+Tag de atribución actual: **`celo_dc3ce5f39b37`**, el **tag del equipo**. Va en la variable `NEXT_PUBLIC_ATTRIBUTION_TAG`, nunca escrito en el código.
 
 Wallet del agente (la del submit de Loops, para testnet y mainnet): `0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`. La clave privada vive solo en `.env.local` y en Vercel como `AGENT_PRIVATE_KEY`. Nunca va en capturas, chats ni el repo.
 
@@ -90,7 +90,7 @@ Leé la que corresponda antes de tocar wallet, tag, identidad o fondos.
   - Llamar a `codeFromHostname(window.location...)` arriba de todo en un archivo `"use client"`: se rompe en el servidor.
   - Usar `sendCalls` o batch, que no lo cubre `withAttribution`.
   - Poner mayúsculas o espacios en el código.
-- **Qué código se acredita:** si el programa asigna un código, solo ese suma. Se pueden mandar varios: `toDataSuffix(['propio', 'asignado'])`. Antes de mainnet, confirmar el código del equipo en Loops (regla 5).
+- **Qué código se acredita:** si el programa asigna un código, solo ese suma. Se pueden mandar varios: `toDataSuffix(['propio', 'asignado'])`. El código del equipo ya está confirmado (regla 5).
 
 ### Identidad del agente, el "DNI" con ERC-8004: [docs de Celo](https://docs.celo.org/build-on-celo/build-with-ai/8004)
 
@@ -200,6 +200,7 @@ Cuando un agente coordina a otros para avanzar varios tickets en paralelo, convi
 
 Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 
+- 2026-11-08 · Tag: `celo_dc3ce5f39b37` es el tag del equipo (confirmado por Mavi), no el personal. No hay nada que cambiar antes de mainnet.
 - 2026-11-08 · Avisos por **Telegram** (PAC-09, PAC-40): sin costo por mensaje y sin plantillas que aprobar. Ya no se usa WhatsApp en ninguna parte: el acuerdo se comparte con "Mandar por Telegram" (`buildTelegramShareUrl`) y el contacto del cliente es su **mail** (no un teléfono), porque Telegram solo escribe a quien se suscribió al bot. Las columnas `whatsapp` y `whatsapp_opt_in` de `users` quedan en la base por ahora. Bot con la Bot API oficial; token en `TELEGRAM_BOT_TOKEN` (reemplaza a `TWILIO_*`). El bot solo le escribe a quien tocó "Iniciar", por eso se guarda el `chat_id` y no el teléfono. Textos en `lib/notify/messages.ts`, envío con `sendTelegram` en `lib/notify/telegram.ts`. Detalle y próximos pasos en `docs/telegram.md`.
 - 2026-11-08 · El chat de `/nuevo` completa el acuerdo y lo genera: después de armar los hitos, el agente pregunta de a una lo que falta (monto de cada hito, moneda del cliente, título, contacto del cliente) con `lib/intake/questions.ts`. Las respuestas se aplican en el navegador, **sin llamar a la IA**. Con todo completo muestra un resumen de lo que va a enviar y pregunta "¿Genero el acuerdo?"; "Sí, generar el acuerdo" llama a `POST /api/agreements` (si no hay billetera conectada pide conectarla). La moneda de cobro queda en wARS (se cambia con "Cambiar monedas"). El paso 2 manual sigue disponible como alternativa.
 - 2026-11-08 · Identidad del agente (PAC-44/45): la agent card vive en `public/agent-card.json` (dominio `https://pacta-dun.vercel.app`) y el registro se hace con `npm run agent:register` (ensayo por defecto; `--send` registra; en mainnet exige que Mavi apruebe con `APPROVED_MAINNET=yes`). Solo se registra una vez por red. El `agentId` de testnet NO va a la card de producción.
@@ -225,7 +226,7 @@ Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 - 2026-10-26 · No se protege `main`: queda como acuerdo del equipo, no como regla de GitHub.
 - 2026-10-31 · Tokens de prueba en Celo Sepolia (wARS/wBRL de Ripio no existen ahí), dueña la wallet del agente: tARS `0x7d0f189d248bffe3888903d071bacd5f8c435845`, tBRL `0xb02ecb85c1f37c42bf8c7aea4d13748c36a7e905`. `getToken("wARS")` devuelve tARS en testnet. Ojo: `deployContract` NO lleva el tag; se despliega con `sendTransaction` (ver `scripts/deploy-test-tokens.ts`).
 - 2026-10-26 · Wallet del agente confirmada por Mavi: `0xab569A8d8A5b60CFfdf9B88EdE099c80d8328E73`. Es la del submit de Loops, se usa en testnet y en mainnet, y no se crea otra el 4 nov.
-- 2026-10-26 · Tag de atribución `celo_dc3ce5f39b37` (personal de Mavi) en `NEXT_PUBLIC_ATTRIBUTION_TAG`. Cambia si hay equipo en Loops.
+- 2026-10-26 · Tag de atribución `celo_dc3ce5f39b37` en `NEXT_PUBLIC_ATTRIBUTION_TAG`. Aclaración 2026-11-08: es el tag del equipo, no uno personal.
 - 2026-10-26 · Sumadas referencias de tag, ERC-8004 y bridges. El Identity Registry de testnet es distinto al de mainnet.
 - 2026-10-26 · Tickets de Flor, Leila y Clau reescritos en formato APB (paso a paso, archivos, cómo probar, palabras nuevas). Mapa del código y guía `docs/WORKFLOW.md`.
 - 2026-10-26 · README principal en inglés (lo lee el jurado); PLAN.md y AGENTS.md siguen en castellano. Las secciones *pending* del README las completan PAC-04, PAC-45, PAC-50 y PAC-52.
@@ -238,7 +239,7 @@ Registro vivo. Agregá una línea cuando cambie algo (más nuevo arriba).
 - 2026-10-25 · MVP con la wallet del agente como bóveda; el contrato de garantía es extra (PAC-54).
 - 2026-10-25 · Proyecto elegido: mezcla de las ideas de Lei (cobro cross-border sin dólar + cobro por hitos con garantía).
 
-Pendiente de definir: si el equipo se registra como team en Loops (y su tag), la ruta de FX definitiva (PAC-08), el usuario de GitHub de Flor.
+Pendiente de definir: la ruta de FX definitiva (PAC-08), el usuario de GitHub de Flor.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
