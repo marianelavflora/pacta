@@ -5,11 +5,12 @@ export const MILESTONE_ID_PATTERN =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export const deliverMilestoneSchema = z.object({
-  freelancerWallet: z
-    .string({ error: "Falta la wallet de la freelancer" })
+  // Firma EIP-712 de la freelancer (lib/chain/delivery.ts). Reemplaza al viejo `freelancerWallet`, que
+  // cualquiera podía escribir a mano.
+  signature: z
+    .string({ error: "Falta la firma" })
     .trim()
-    .regex(/^0x[0-9a-fA-F]{40}$/, "La wallet de la freelancer no es válida")
-    .transform((wallet) => wallet.toLowerCase()),
+    .regex(/^0x[0-9a-fA-F]{130}$/, "La firma no es válida"),
   deliveryUrl: z
     .string({ error: "Falta el link de la entrega" })
     .trim()

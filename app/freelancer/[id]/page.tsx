@@ -161,6 +161,8 @@ async function Milestones({ id }: { id: Promise<string> }) {
             )}
             <DeliverDialog
               milestoneId={m.id}
+              agreementPublicId={agreement.publicId}
+              position={m.position}
               milestoneTitle={m.title}
               status={m.status}
               freelancerWallet={agreement.freelancer.wallet}
