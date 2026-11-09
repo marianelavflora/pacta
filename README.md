@@ -10,12 +10,12 @@
 </p>
 
 <p align="center">
-  Built on Celo · Ripio wFIAT (wARS, wBRL, wMXN) · Textile FX · ERC-8004 · Claude API
+  Built on Celo · Ripio wFIAT (wARS, wBRL, wMXN) · Textile FX · ERC-8004 · Gemini API
 </p>
 
 ---
 
-> **Status:** built for the [Agents on Open Rails](docs/hackathon/overview.md) hackathon (Loops House × Celo × Ripio). **Live on Celo mainnet** at [pacta-dun.vercel.app](https://pacta-dun.vercel.app): a full milestone payment (deposit → delivery → approval → payout in wARS) has run on mainnet with the team attribution tag, and the agent has an ERC-8004 identity. Cross-currency conversion (Textile / Uniswap) already **quotes** live prices; settling the swap onchain is still in progress, so today the agent pays out in the currency the client deposited. Sections marked *pending* are not done yet.
+> **Status:** built for the [Agents on Open Rails](docs/hackathon/overview.md) hackathon (Loops House × Celo × Ripio). **Live on Celo mainnet** at [pacta-dun.vercel.app](https://pacta-dun.vercel.app): a full milestone payment (deposit → delivery → approval → payout in wARS) has run on mainnet with the team attribution tag, and the agent has an ERC-8004 identity. Cross-currency payouts are implemented: the agent quotes Textile, Uniswap v3 and a reference rate, and converts through Textile before paying. The first mainnet payment was same-currency; the conversion path has not run on mainnet yet. Sections marked *pending* are not done yet.
 
 ## The problem
 
@@ -23,9 +23,9 @@ A designer in Córdoba works for an agency in São Paulo. Today she gets paid in
 
 ## What Pactá does
 
-1. **The freelancer describes the job in plain words.** The agent (Claude API) turns it into an agreement with milestones, amounts and review deadlines that she can edit.
+1. **The freelancer describes the job in plain words.** The agent (Gemini API) turns it into an agreement with milestones, amounts and review deadlines that she can edit.
 2. **The client deposits the full amount upfront**, in their own Ripio stablecoin (for example wBRL). The agent holds it as a guarantee, so the freelancer knows the money is there before she starts.
-3. **She delivers a milestone** with a link and a note. The client gets a Telegram message to review it.
+3. **She delivers a milestone** with a link and a note. The client is notified by Telegram or email to review it.
 4. **The client approves** with a wallet signature (no gas).
 5. **The agent gets the best FX quote**, converts that tranche (wBRL → wARS) and pays her. She gets a receipt with the rate, the amounts and the onchain transactions.
 6. **If the client doesn't answer**, the agent sends a second reminder after 3 days, and after 3 more days (6 in total) it releases the payment on its own.
@@ -37,18 +37,20 @@ sequenceDiagram
   actor F as Freelancer
   participant A as Pactá agent
   actor C as Client
-  F->>A: "Logo + brand manual, 3 deliveries, 1,500 BRL"
-  A->>A: Builds agreement with 3 milestones (Claude API)
-  A->>C: Link to review and deposit
-  C->>A: Deposits 1,500 wBRL
-  A->>F: "Funds secured, you can start"
-  F->>A: Delivers milestone 1
-  A->>C: "Review delivery 1" (Telegram)
-  C->>A: Approves (wallet signature)
-  A->>A: Quotes wBRL→wARS, picks the best route
-  A->>F: Pays the tranche in wARS
+  F->>A: Chat: "Logo + brand manual, 3 deliveries, 1,500 BRL"
+  A->>A: Proposes 3 milestones (Gemini API) and asks for what is missing
+  A->>C: Link to review and deposit (shared on Telegram)
+  C->>A: Deposits 1,500 wBRL (tagged tx)
+  A->>F: "Funds secured, you can start" (Telegram / email)
+  F->>A: Delivers milestone 1 (link + note)
+  A->>C: "Review delivery 1" (Telegram / email)
+  C->>A: Approves (wallet signature, no gas)
+  A->>A: Quotes wBRL→wARS (Textile, Uniswap v3, reference rate)
+  A->>A: Converts through Textile: wBRL→USDT→wARS (tagged txs)
+  A->>F: Pays the tranche in wARS (tagged tx)
   A->>F: Receipt with FX rate and onchain links
   Note over A,C: No answer in 3 days: second reminder. 3 more days: auto-release
+  Note over F,C: Same-currency agreements (wARS → wARS) skip the conversion
 ```
 
 ## How it works
@@ -58,29 +60,55 @@ flowchart LR
   F[Freelancer] --> W[Pactá web]
   C[Client] --> W
   W --> API[API]
+  API --> IA[Gemini API: intake]
   API --> DB[(Supabase)]
-  API --> IA[Claude API]
-  AG[Agent: scheduled jobs] --> DB
-  AG --> FX[FX quoter]
-  FX --> TX[Textile / Celo DEX]
-  AG --> WAL[Agent wallet + attribution tag]
-  WAL --> CELO[(Celo)]
-  W -- tagged deposit --> CELO
-  AG --> N[Telegram / email alerts]
+  W -- tagged deposit --> CELO[(Celo)]
+  subgraph Agent["Pactá agent (scheduled jobs)"]
+    VAULT[Vault]
+    REM[Reminders]
+    REL[Releaser]
+  end
+  Agent --> DB
+  REL --> FX[FX quoter]
+  FX --> TXQ[Textile]
+  FX --> UNI[Uniswap v3 on Celo]
+  FX --> REF[Reference rate]
+  REL --> WAL[Agent wallet + attribution tag]
+  WAL -- Textile swap and payout --> CELO
+  REM --> N[Alerts]
+  REL --> N
+  N --> TG[Telegram bot]
+  N --> EM[Email: Resend]
 ```
 
 | Module | What it does |
 |---|---|
-| Intake | Free text → agreement with milestones, amounts and deadlines (Claude API). |
+| Intake | Chat with the agent: free text → agreement with milestones, amounts and deadlines (Gemini API). |
 | Web | Create agreement, client link, deposit, deliver, approve, receipts. |
 | Vault | Detects deposits to the agent wallet and tracks the balance per agreement. |
-| FX quoter | Textile + a Celo DEX as fallback, plus a reference rate; picks the best price. |
+| FX quoter | Compares Textile, Uniswap v3 on Celo and a reference rate, discards routes more than 15% away from the reference and picks the one that pays the freelancer the most. |
 | Releaser | Pays approved or expired milestones, converting when needed, exactly once. |
 | Receipts | Matches database and chain to build a receipt for each payment. |
 | Identity & tag | Single wallet client with the attribution tag, ERC-8004 registration, agent card. |
-| Alerts | Telegram and email on every state change. |
+| Alerts | Telegram bot first, email (Resend) as fallback, on every state change. |
 
 Milestone lifecycle: `pending → funded → delivered → reminded (day 3) → approved | expired (day 6) → converting → paid`, with `paused` available from `delivered`.
+
+```mermaid
+stateDiagram-v2
+  [*] --> pending
+  pending --> funded: client deposits
+  funded --> delivered: freelancer delivers
+  delivered --> approved: client approves
+  delivered --> reminded: day 3, no answer
+  delivered --> paused: client pauses
+  reminded --> approved: client approves
+  reminded --> expired: day 6, auto-release
+  approved --> converting: agent takes it
+  expired --> converting: agent takes it
+  converting --> paid: agent pays
+  paid --> [*]
+```
 
 For the MVP the agent wallet acts as the vault, with a cap per agreement and a daily payout cap. An onchain escrow contract is a stretch goal.
 
@@ -95,8 +123,8 @@ For the MVP the agent wallet acts as the vault, with a cap per agreement and a d
 | Attribution | `@celo/attribution-tags` (ERC-8021) on every transaction |
 | Identity | ERC-8004 Identity Registry on Celo |
 | Tokens | Ripio wFIAT: wARS, wBRL, wMXN |
-| FX | Textile + Celo DEX fallback |
-| AI | Claude API |
+| FX | Textile (quotes and swaps), Uniswap v3 on Celo (quotes) and a reference rate |
+| AI | Google Gemini API (intake) |
 | Database | Supabase (Postgres) |
 | Scheduled jobs | Vercel Cron |
 | Alerts | Telegram (official Bot API) + email with Resend |
@@ -152,7 +180,8 @@ Fill in `.env.local`. Git ignores it, so your keys never reach the repo. Every v
 | `SUPABASE_URL` | Supabase → Project Settings → Data API → Project URL. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API Keys → the **secret** key (`sb_secret_...`) or the legacy `service_role`. Never the publishable/anon key. |
 | `SUPABASE_DB_URL` | Supabase → **Connect** → Connection string. Only needed to run migrations from scripts. |
-| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) → API Keys. |
+| `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com) → Get API key (free tier). Server only. |
+| `INTAKE_MODEL` | Optional. Gemini model for the intake; defaults to `gemini-3.1-flash-lite`. |
 | `TELEGRAM_BOT_TOKEN` | The bot token from [@BotFather](https://t.me/BotFather). See [`docs/telegram.md`](docs/telegram.md). |
 | `RESEND_API_KEY` | [resend.com](https://resend.com) → API Keys. |
 | `CRON_SECRET` | Any long random string, for example `openssl rand -hex 32`. |
