@@ -25,7 +25,7 @@ Las carpetas siguen el **Mapa del código** de `AGENTS.md`:
 | Carpeta | Qué prueba |
 |---|---|
 | `tests/api/` | Rutas de `app/api/` |
-| `tests/agent/` | Bóveda (`vault.test.ts`: depósito completo, en partes, repetido, remitente, token, tx fallida, sin tag), liberador, cotizador y recordatorios (`agent/`) |
+| `tests/agent/`; **A2** (`vault.test.ts`): un depósito de un centavo fija al cliente solo de forma provisoria, otra wallet que cubre por sí sola el primer hito toma su lugar, otro centavo no lo desplaza, con el primer hito financiado queda fijo y el depósito en partes sigue andando | Bóveda (`vault.test.ts`: depósito completo, en partes, repetido, remitente, token, tx fallida, sin tag), liberador, cotizador y recordatorios (`agent/`) |
 | `tests/chain/` | Wallet, tag y tokens (`lib/chain/`) |
 | `tests/fx/` | Precio de referencia y comparación (`lib/fx/`) |
 | `tests/notify/` | Avisos por Telegram y mail (`lib/notify/`) |
