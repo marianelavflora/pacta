@@ -211,11 +211,70 @@ describe("confirmDeposit", () => {
     expect(db.tables.movements[0].tx_hash).toBe(hashOf(255));
   });
 
-  it("remitente distinto al de la wallet ya fijada: rechaza y no guarda nada", async () => {
-    const deps = setup({ [hashOf(1)]: { amount: 500n * E18, from: OTHER_CLIENT } }, CLIENT);
+  it("remitente distinto al de la wallet ya fijada que NO cubre el primer hito: rechaza y no guarda nada", async () => {
+    const deps = setup({ [hashOf(1)]: { amount: 100n * E18, from: OTHER_CLIENT } }, CLIENT);
     expect(await confirmDeposit(deps, "abcd1234", hashOf(1))).toEqual({ kind: "wrong_sender" });
     expect(db.tables.movements).toHaveLength(0);
     expect(statuses()).toEqual(["pending", "pending", "pending"]);
+    expect(db.tables.agreements[0].client_wallet).toBe(CLIENT);
+  });
+
+  describe("A2: el primer depósito no puede dejar afuera al cliente real", () => {
+    it("un depósito de un centavo fija al cliente de forma provisoria", async () => {
+      const deps = setup({ [hashOf(1)]: { amount: 1n, from: OTHER_CLIENT } });
+      expect(await confirmDeposit(deps, "abcd1234", hashOf(1))).toMatchObject({ kind: "recorded" });
+      expect(db.tables.agreements[0].client_wallet).toBe(OTHER_CLIENT);
+      expect(statuses()).toEqual(["pending", "pending", "pending"]);
+    });
+
+    it("el cliente real toma su lugar con un depósito que cubre el primer hito", async () => {
+      const deps = setup({
+        [hashOf(1)]: { amount: 1n, from: OTHER_CLIENT }, // el que se adelantó con un centavo
+        [hashOf(2)]: { amount: 2000n * E18, from: CLIENT }, // el cliente real
+      });
+      await confirmDeposit(deps, "abcd1234", hashOf(1));
+
+      const res = await confirmDeposit(deps, "abcd1234", hashOf(2));
+
+      expect(res).toMatchObject({ kind: "recorded", agreementFunded: true });
+      expect(db.tables.agreements[0].client_wallet).toBe(CLIENT);
+      expect(statuses()).toEqual(["funded", "funded", "funded"]);
+    });
+
+    it("alcanza con cubrir justo el primer hito", async () => {
+      const deps = setup({ [hashOf(1)]: { amount: 500n * E18, from: CLIENT } }, OTHER_CLIENT);
+      expect(await confirmDeposit(deps, "abcd1234", hashOf(1))).toMatchObject({ kind: "recorded", fundedMilestones: ["ms1"] });
+      expect(db.tables.agreements[0].client_wallet).toBe(CLIENT);
+    });
+
+    it("otro centavo de otra wallet NO desplaza al cliente actual", async () => {
+      const deps = setup({ [hashOf(1)]: { amount: 1n, from: OTHER_CLIENT } }, CLIENT);
+      expect(await confirmDeposit(deps, "abcd1234", hashOf(1))).toEqual({ kind: "wrong_sender" });
+      expect(db.tables.agreements[0].client_wallet).toBe(CLIENT);
+    });
+
+    it("con el primer hito ya financiado el cliente queda fijo: nadie lo reemplaza ni pagando mucho", async () => {
+      const deps = setup({
+        [hashOf(1)]: { amount: 500n * E18, from: CLIENT }, // financia el hito 1
+        [hashOf(2)]: { amount: 2000n * E18, from: OTHER_CLIENT },
+      });
+      await confirmDeposit(deps, "abcd1234", hashOf(1));
+      expect(statuses()[0]).toBe("funded");
+
+      expect(await confirmDeposit(deps, "abcd1234", hashOf(2))).toEqual({ kind: "wrong_sender" });
+      expect(db.tables.agreements[0].client_wallet).toBe(CLIENT);
+      expect(db.tables.movements).toHaveLength(1);
+    });
+
+    it("un cliente que deposita en partes sigue siendo el cliente (el depósito en partes no se rompe)", async () => {
+      const deps = setup({
+        [hashOf(1)]: { amount: 400n * E18, from: CLIENT },
+        [hashOf(2)]: { amount: 100n * E18, from: CLIENT },
+      });
+      await confirmDeposit(deps, "abcd1234", hashOf(1));
+      expect(await confirmDeposit(deps, "abcd1234", hashOf(2))).toMatchObject({ kind: "recorded", fundedMilestones: ["ms1"] });
+      expect(db.tables.agreements[0].client_wallet).toBe(CLIENT);
+    });
   });
 
   it("token equivocado o destinatario equivocado", async () => {

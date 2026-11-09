@@ -146,6 +146,8 @@ export function getReleaserDeps(): ReleaserDeps {
     // Tope opcional por pago y por moneda, en unidades enteras del token (ej. "500"). Vacío = sin tope.
     maxPayoutByCurrency,
     converter: buildConverter(),
+    // Producción comparte base con testnet: solo se paga lo que de verdad se depositó en esta red.
+    onlyThisNetwork: true,
     chain: {
       balanceOf: (token: Address, owner: Address) =>
         pub.readContract({

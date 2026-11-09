@@ -48,7 +48,7 @@ export type DepositResult =
   | { kind: "tx_failed" }
   | { kind: "wrong_transfer" } // otro token, otro destino, o no hay una sola transferencia clara
   | { kind: "no_tag" }
-  | { kind: "wrong_sender" } // el acuerdo ya tiene otra wallet de cliente
+  | { kind: "wrong_sender" } // el acuerdo ya tiene otra wallet de cliente (y este depósito no alcanza para tomar su lugar)
   | { kind: "tx_used_elsewhere" }; // esa transacción ya está asignada a otro acuerdo
 
 type Row = Record<string, unknown>;
@@ -108,9 +108,28 @@ export async function confirmDeposit(
     return { kind: "tx_used_elsewhere" };
   }
 
-  // 2) La wallet del cliente: la primera que deposita queda fija.
+  // 2) La wallet del cliente: la primera que deposita queda como cliente, pero de forma PROVISORIA hasta que
+  //    el primer hito esté financiado (A2 de la auditoría de seguridad). Sin esto, cualquiera con el link podía
+  //    depositar un centavo, quedar como cliente y dejar afuera al verdadero. Mientras el primer hito no esté
+  //    financiado, otra wallet cuyo depósito cubra POR SÍ SOLO ese hito toma el lugar: bloquear al cliente real
+  //    le cuesta al atacante, como mínimo, un hito entero (que cobra la freelancera, no él).
   const current = agreement.client_wallet as string | null;
-  if (current && current !== sender) return { kind: "wrong_sender" };
+  if (current && current !== sender) {
+    if (!(await canTakeOverClient(db, agreementId, amount))) return { kind: "wrong_sender" };
+    const takeover = await db
+      .from("agreements")
+      .update({ client_wallet: sender })
+      .eq("id", agreementId)
+      .eq("client_wallet", current)
+      .select("id");
+    if (takeover.error) fail("cambiar la wallet del cliente", takeover.error);
+    if (!takeover.data?.length) {
+      // Otro pedido cambió la wallet justo antes: si no quedó la de este depósito, se rechaza.
+      const again = await db.from("agreements").select("client_wallet").eq("id", agreementId).single();
+      if (again.error) fail("releer el acuerdo", again.error);
+      if ((again.data as Row).client_wallet !== sender) return { kind: "wrong_sender" };
+    }
+  }
   if (!current) {
     const claim = await db
       .from("agreements")
@@ -156,6 +175,23 @@ export async function confirmDeposit(
     fundedMilestones,
     agreementFunded,
   };
+}
+
+/**
+ * ¿Puede una wallet nueva quedarse con el lugar del cliente? Solo mientras el primer hito siga sin financiar y
+ * con un depósito que lo cubra por sí solo. Con el primer hito ya financiado, el cliente queda fijo.
+ */
+async function canTakeOverClient(db: SupabaseClient, agreementId: string, amount: bigint): Promise<boolean> {
+  const first = await db
+    .from("milestones")
+    .select("status, amount::text")
+    .eq("agreement_id", agreementId)
+    .eq("position", 1)
+    .maybeSingle();
+  if (first.error) fail("leer el primer hito", first.error);
+  const row = first.data as Row | null;
+  if (!row || row.status !== "pending") return false;
+  return amount >= BigInt(String(row.amount));
 }
 
 /** Pasa a `funded` los hitos `pending`, en orden de `position`, mientras alcance lo depositado. */

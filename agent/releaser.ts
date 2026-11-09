@@ -59,6 +59,12 @@ export type Converter = {
 export type ReleaserDeps = {
   db: SupabaseClient;
   chain: ReleaserChain;
+  /**
+   * Solo paga acuerdos cuyo depósito existe en la red actual (se comprueba en la cadena). Hace seguro que local,
+   * previews y producción compartan base: un acuerdo de prueba (de testnet) nunca se paga con plata de mainnet.
+   * En producción siempre va en true (agent/releaser-server.ts).
+   */
+  onlyThisNetwork?: boolean;
   /** Opcional: cambia de moneda cuando el cliente deposita en una y la freelancer cobra en otra. */
   converter?: Converter;
   agentAddress: Address;
@@ -80,6 +86,7 @@ export type ReleaseResult =
   | { kind: "wrong_status"; status: string }
   | { kind: "needs_conversion" } // moneda del cliente distinta a la de cobro: lo hace PAC-32
   | { kind: "no_freelancer_wallet" }
+  | { kind: "wrong_network" } // el depósito de este acuerdo no está en la red actual (es de otra red): no se toca
   | { kind: "over_cap" }
   | { kind: "insufficient_balance" }
   | { kind: "tx_failed"; reason: string } // seguro que NO salio plata (simulacion o recibo revertido): reintentable
@@ -126,6 +133,11 @@ export async function releaseMilestone(deps: ReleaserDeps, milestoneId: string):
   const agreement = agreementRes.data as Row;
   const currency = agreement.payout_currency as TokenSymbol;
 
+  // Antes de tocar nada: el acuerdo tiene que ser de ESTA red.
+  if (deps.onlyThisNetwork && !(await depositedOnThisNetwork(deps, agreementId))) {
+    return { kind: "wrong_network" };
+  }
+
   const userRes = await db.from("users").select("wallet").eq("id", agreement.freelancer_id).single();
   if (userRes.error) fail("buscar a la freelancer", userRes.error);
   const wallet = (userRes.data as Row).wallet as string;
@@ -145,6 +157,26 @@ export async function releaseMilestone(deps: ReleaserDeps, milestoneId: string):
   }
 
   return sendPayout(deps, { milestoneId, agreementId, currency, wallet: wallet as Address, amount, claim: true });
+}
+
+/**
+ * ¿Alguno de los depósitos confirmados de este acuerdo existe en la red actual? Un acuerdo hecho en testnet
+ * (o en otra red) tiene un hash de depósito que esta red no conoce: no hay recibo y no se paga.
+ */
+async function depositedOnThisNetwork(deps: ReleaserDeps, agreementId: string): Promise<boolean> {
+  const res = await deps.db
+    .from("movements")
+    .select("tx_hash")
+    .eq("agreement_id", agreementId)
+    .eq("kind", "deposit")
+    .eq("status", "confirmed");
+  if (res.error) fail("buscar los depósitos del acuerdo", res.error);
+  for (const row of (res.data ?? []) as Row[]) {
+    if (!row.tx_hash) continue;
+    const receipt = await deps.chain.getReceipt(hashOf(String(row.tx_hash))).catch(() => null);
+    if (receipt?.status === "success") return true;
+  }
+  return false;
 }
 
 type PayoutPlan = {
